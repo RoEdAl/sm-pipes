@@ -1,4 +1,5 @@
 /*
+    named-pipe-server.hpp
 */
 
 #ifndef _NAMED_PIPE_SEVER_HPP_
@@ -54,7 +55,73 @@ public:
         }
     }
 
-    void Run()
+    // run in separate thread
+    HRESULT Run()
+    {
+        if(m_thread.m_h != NULL) return E_FAIL;
+
+        DWORD idThread;
+
+        HANDLE hThread = ::CreateThread(NULL, 0, thread_proc, this, CREATE_SUSPENDED, &idThread);
+        if(hThread == NULL)
+        {
+            return AtlHresultFromLastError();
+        }
+
+        m_thread.Attach(hThread);
+        ::ResumeThread(hThread);
+        return S_OK;
+    }
+
+    HRESULT Stop()
+    {
+        if(m_thread.m_h == NULL) return S_FALSE;
+
+        set_event(m_evStop);
+        DWORD dwRes = ::WaitForSingleObject(m_thread, WORKER_THREAD_FINISH_TIMEOUT);
+        if(dwRes == WAIT_TIMEOUT)
+        {
+            ::TerminateThread(m_thread, TERMINATED_THREAD_EXIT_CODE);
+            return S_FALSE;
+        }
+
+        return S_OK;
+    }
+
+    ~named_pipe_server()
+    {
+
+    }
+
+    bool IsValid() const
+    {
+        return m_logonSid.IsValid();
+    }
+
+private:
+
+    CSid m_ownerSid;
+    CSid m_logonSid;
+    CString m_sFullPipeName;
+    CSecurityAttributes m_sa;
+
+private:
+
+    static DWORD WINAPI thread_proc(LPVOID _pThis)
+    {
+        named_pipe_server* pThis = static_cast<named_pipe_server*>(_pThis);
+        _ATLTRY
+        {
+            pThis->thread_proc();
+            return S_OK;
+        }
+            _ATLCATCH(e)
+        {
+            return e.m_hr;
+        }
+    };
+
+    void thread_proc()
     {
         ATLASSERT(IsValid());
 
@@ -81,53 +148,43 @@ public:
 
             switch(i)
             {
-            case INSTANCES: // m_evStop
-            bStop = true;
-            break;
-
-            case INSTANCES + 1: // m_evWrite
-            // TODO
-            break;
-
-            default:
-            {
-                CAutoPtr<CPipeInstance>& pPipe = m_aInstance[i];
-                _ATLTRY
-                {
-                    pPipe->Run();
-                }
-                    _ATLCATCH(e)
-                {
-                    if(e.m_hr == HRESULT_FROM_WIN32(ERROR_BROKEN_PIPE))
-                    {
-                        pPipe->DisconnectAndReconnect(++m_instanceCnt);
-                    }
-                }
+                case INSTANCES: // m_evStop
+                bStop = true;
                 break;
-            }
-            }
 
+                case INSTANCES + 1: // m_evWrite
+                // TODO
+                break;
+
+                default:
+                {
+                    CAutoPtr<CPipeInstance>& pPipe = m_aInstance[i];
+                    _ATLTRY
+                    {
+                        pPipe->Run();
+                    }
+                        _ATLCATCH(e)
+                    {
+                        if(e.m_hr == HRESULT_FROM_WIN32(ERROR_BROKEN_PIPE))
+                        {
+                            pPipe->DisconnectAndReconnect(++m_instanceCnt);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        cancel_pending_operations();
+    }
+
+    void cancel_pending_operations()
+    {
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            m_aInstance[i]->CancelPendingOperation();
         }
     }
-
-    ~named_pipe_server()
-    {
-
-    }
-
-    bool IsValid() const
-    {
-        return m_logonSid.IsValid();
-    }
-
-private:
-
-    CSid m_ownerSid;
-    CSid m_logonSid;
-    CString m_sFullPipeName;
-    CSecurityAttributes m_sa;
-
-private:
 
     class CPipeInstance
     {
@@ -152,20 +209,20 @@ private:
 
             switch(hRes)
             {
-            case HRESULT_FROM_WIN32(ERROR_IO_PENDING):
-            fPendingIO = true;
-            break;
+                case HRESULT_FROM_WIN32(ERROR_IO_PENDING):
+                fPendingIO = true;
+                break;
 
-            case HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
-            if(!::SetEvent(oOverlap.hEvent))
-            {
-                AtlThrowLastWin32();
-            }
-            break;
+                case HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
+                if(!::SetEvent(oOverlap.hEvent))
+                {
+                    AtlThrowLastWin32();
+                }
+                break;
 
-            default:
-            AtlThrow(hRes);
-            break;
+                default:
+                AtlThrow(hRes);
+                break;
             }
 
             eState = fPendingIO ? INSTANCE_STATE_CONNECTING : INSTANCE_STATE_READING;
@@ -197,68 +254,76 @@ private:
 
             switch(eState)
             {
-            case INSTANCE_STATE_CONNECTING:
-            eState = INSTANCE_STATE_READING;
-            break;
+                case INSTANCE_STATE_CONNECTING:
+                eState = INSTANCE_STATE_READING;
+                break;
 
-            case INSTANCE_STATE_READING:
-            inputBuffer.TrimLastChunk(cbTransfered);
-            if(!more_data(hRes))
-            {
-                message_completed();
-            }
-            break;
+                case INSTANCE_STATE_READING:
+                inputBuffer.TrimLastChunk(cbTransfered);
+                if(!more_data(hRes))
+                {
+                    message_completed();
+                }
+                break;
             }
 
             // read/write (again)
             switch(eState)
             {
-            case INSTANCE_STATE_READING:
-            {
-                while(true)
+                case INSTANCE_STATE_READING:
                 {
-                    DWORD cbBytesLeftInThisMessage;
-                    hRes = pipeInstance.PeekNamedPipe(cbBytesLeftInThisMessage);
-                    if(SUCCEEDED(hRes))
+                    while(true)
                     {
-                        // TODO: validate message size
-                        Buffer& buffer = inputBuffer.AddBuffer(cbBytesLeftInThisMessage > 0 ? cbBytesLeftInThisMessage : BUFSIZE);
-                        hRes = pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &oOverlap);
-                        if(read_succeeded(hRes))
+                        DWORD cbBytesLeftInThisMessage;
+                        hRes = pipeInstance.PeekNamedPipe(cbBytesLeftInThisMessage);
+                        if(SUCCEEDED(hRes))
                         {
-                            hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, false);
+                            // TODO: validate message size
+                            Buffer& buffer = inputBuffer.AddBuffer(cbBytesLeftInThisMessage > 0 ? cbBytesLeftInThisMessage : BUFSIZE);
+                            hRes = pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &oOverlap);
                             if(read_succeeded(hRes))
                             {
-                                inputBuffer.TrimLastChunk(cbTransfered);
-                                if(!more_data(hRes))
+                                hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, false);
+                                if(read_succeeded(hRes))
                                 {
-                                    message_completed();
+                                    inputBuffer.TrimLastChunk(cbTransfered);
+                                    if(!more_data(hRes))
+                                    {
+                                        message_completed();
+                                    }
+                                }
+                                else
+                                {
+                                    AtlThrow(hRes);
                                 }
                             }
-                            else
+                            else if(hRes != HRESULT_FROM_WIN32(ERROR_IO_PENDING))
                             {
                                 AtlThrow(hRes);
                             }
-                        }
-                        else if(hRes != HRESULT_FROM_WIN32(ERROR_IO_PENDING))
-                        {
-                            AtlThrow(hRes);
+                            else
+                            {
+                                fPendingIO = true;
+                                break;
+                            }
                         }
                         else
                         {
-                            fPendingIO = true;
-                            break;
+                            AtlThrow(hRes);
                         }
                     }
-                    else
-                    {
-                        AtlThrow(hRes);
-                    }
-                }
 
-                break;
+                    break;
+                }
             }
-            }
+        }
+
+        void CancelPendingOperation()
+        {
+            if(!fPendingIO) return;
+
+            HRESULT hRes = pipeInstance.CancelIo();
+            hRes = pipeInstance.DisconnectNamedPipe();
         }
 
     protected:
@@ -288,6 +353,7 @@ private:
     HANDLE m_aWaitObjects[INSTANCES + 2];
     CAtlArray<CHandle> m_aInstanceEvent;
     CAutoPtrArray<CPipeInstance> m_aInstance;
+    CHandle m_thread;
 
 protected:
 
@@ -328,6 +394,15 @@ protected:
         }
 
         ev.Attach(hEvent);
+    }
+
+    static void set_event(CHandle& ev)
+    {
+        BOOL fResult = ::SetEvent(ev);
+        if(!fResult)
+        {
+            AtlThrowLastWin32();
+        }
     }
 };
 

@@ -13,6 +13,12 @@ public:
 
     static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
     static const DWORD PIPE_WAIT_TIMEOUT = 500;
+#ifdef _DEBUG
+    static const DWORD WORKER_THREAD_FINISH_TIMEOUT = 60 * 60 * 1000;
+#else
+    static const DWORD WORKER_THREAD_FINISH_TIMEOUT = 2000;
+#endif
+    static const DWORD TERMINATED_THREAD_EXIT_CODE = 0xfffa;
 
     enum INSTANCE_STATE
     {

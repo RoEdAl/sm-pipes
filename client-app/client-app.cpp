@@ -8,17 +8,7 @@
 #include <stdio.h>
 #include <conio.h>
 #include <tchar.h>
-
-
-#define _ATL_CSTRING_EXPLICIT_CONSTRUCTORS      // some CString constructors will be explicit
-
-#include <aclapi.h>
-#include <sddl.h>
-
-#include <atlsecurity.h>
-#include <atlstr.h>
-#include <atlfile.h>
-#include <atlcoll.h>
+#include <atl-headers.h>
 
 namespace
 {
