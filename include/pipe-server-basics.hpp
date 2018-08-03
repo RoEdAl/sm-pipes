@@ -9,10 +9,10 @@
 
 class pipe_server_basics
 {
-	public:
+public:
 
-	static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
-	static const DWORD PIPE_WAIT_TIMEOUT = 500;
+    static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
+    static const DWORD PIPE_WAIT_TIMEOUT = 500;
 
     enum INSTANCE_STATE
     {
@@ -23,11 +23,11 @@ class pipe_server_basics
 
     typedef ULONG64 INSTANCENO;
 
-	protected:
+protected:
 
     static inline bool more_data(HRESULT hRes)
     {
-		return hRes == HRESULT_FROM_WIN32(ERROR_MORE_DATA);
+        return hRes == HRESULT_FROM_WIN32(ERROR_MORE_DATA);
     }
 
     static inline bool read_succeeded(HRESULT hRes)
@@ -36,10 +36,10 @@ class pipe_server_basics
     }
 
     typedef CAtlArray<BYTE> Buffer;
-    
+
     class CChunkedBuffer
     {
-        public:
+    public:
 
         CChunkedBuffer()
         {}
@@ -54,7 +54,7 @@ class pipe_server_basics
             copy_chunks(chunked_buffer);
         }
 
-        public:
+    public:
 
         size_t GetNumberOfChunks() const
         {
@@ -74,7 +74,7 @@ class pipe_server_basics
         size_t GetCount() const
         {
             size_t res = 0;
-            for (size_t i = 0, nCount = m_buffers.GetCount(); i < nCount; ++i)
+            for(size_t i = 0, nCount = m_buffers.GetCount(); i < nCount; ++i)
                 res += m_buffers[i].GetCount();
             return res;
         }
@@ -85,7 +85,7 @@ class pipe_server_basics
             size_t nBufferSize = nTotalSize;
             buffer.SetCount(nTotalSize);
             BYTE* pBuffer = buffer.GetData();
-            for (size_t i = 0, nCount = m_buffers.GetCount(); i < nCount; ++i)
+            for(size_t i = 0, nCount = m_buffers.GetCount(); i < nCount; ++i)
             {
                 size_t nChunkSize = m_buffers[i].GetCount();
                 Checked::memcpy_s(pBuffer, nBufferSize, m_buffers[i].GetData(), nChunkSize);
@@ -133,26 +133,26 @@ class pipe_server_basics
             return m_buffers.GetAt(nCount);
         }
 
-		void TrimLastChunk(size_t nNewSize)
-		{
-			size_t nCount = m_buffers.GetCount();
-			if (nCount == 0) return;
+        void TrimLastChunk(size_t nNewSize)
+        {
+            size_t nCount = m_buffers.GetCount();
+            if(nCount == 0) return;
 
-			if (nNewSize > 0)
-			{
-				m_buffers.GetAt(nCount - 1).SetCount(nNewSize);
-			}
-			else
-			{
-				m_buffers.RemoveAt(nCount - 1);
-			}
-		}
+            if(nNewSize > 0)
+            {
+                m_buffers.GetAt(nCount - 1).SetCount(nNewSize);
+            }
+            else
+            {
+                m_buffers.RemoveAt(nCount - 1);
+            }
+        }
 
-        protected:
+    protected:
 
         CAtlArray<Buffer> m_buffers;
 
-        private:
+    private:
 
         inline void add_buffer(const Buffer& buffer)
         {
@@ -165,7 +165,7 @@ class pipe_server_basics
         {
             size_t nSize = chunked_buffer.GetNumberOfChunks();
             m_buffers.SetCount(nSize);
-            for (size_t i = 0; i < nSize; i++)
+            for(size_t i = 0; i < nSize; ++i)
             {
                 m_buffers.GetAt(i).Copy(chunked_buffer.GetChunk(i));
             }

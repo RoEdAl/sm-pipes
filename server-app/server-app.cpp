@@ -27,8 +27,8 @@ namespace
 
 int main()
 {
-	named_pipe_server<2,4*1024> server;
-	if (!server.IsValid()) return 1;
-	server.Run();
+    named_pipe_server<2, 4 * 1024> server;
+    if(!server.IsValid()) return 1;
+    server.Run();
     return 0;
 }
