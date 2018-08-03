@@ -53,8 +53,12 @@ int main()
     buffer.SetCount(5 * 1024);
     FillMemory(buffer.GetData(), buffer.GetCount(), 0x54);
 
+    // 1
     BOOL fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()));
+    _getch();
 
+    // 2
+    fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()/2));
     _getch();
     return 0;
 }

@@ -23,7 +23,7 @@ public:
         DWORD                 nOutBufferSize = 0,
         DWORD                 nInBufferSize = 0,
         DWORD                 nDefaultTimeOut = 500,
-        LPSECURITY_ATTRIBUTES lpSecurityAttributes = NULL
+        LPSECURITY_ATTRIBUTES lpSecurityAttributes = nullptr
     )
     {
         ATLASSUME(m_h == NULL);
@@ -99,7 +99,7 @@ public:
     }
 
     HRESULT ConnectNamedPipe(
-        LPOVERLAPPED lpOverlapped = NULL
+        LPOVERLAPPED lpOverlapped = nullptr
     )
     {
         ATLASSUME(m_h != NULL);
@@ -174,6 +174,21 @@ public:
         ATLASSUME(m_h != NULL);
 
         BOOL fResult = ::CancelIo(m_h);
+        if(fResult)
+        {
+            return S_OK;
+        }
+        else
+        {
+            return AtlHresultFromLastError();
+        }
+    }
+
+    HRESULT CancelIoEx(LPOVERLAPPED lpOverlapped = nullptr)
+    {
+        ATLASSUME(m_h != NULL);
+
+        BOOL fResult = ::CancelIoEx(m_h, lpOverlapped);
         if(fResult)
         {
             return S_OK;

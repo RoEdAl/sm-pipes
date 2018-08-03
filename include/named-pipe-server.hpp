@@ -246,7 +246,7 @@ private:
         {
             DWORD cbTransfered;
             fPendingIO = false;
-            HRESULT hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, false);
+            HRESULT hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, true);
             if(!read_succeeded(hRes))
             {
                 AtlThrow(hRes);
@@ -283,7 +283,7 @@ private:
                             hRes = pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &oOverlap);
                             if(read_succeeded(hRes))
                             {
-                                hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, false);
+                                hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, true);
                                 if(read_succeeded(hRes))
                                 {
                                     inputBuffer.TrimLastChunk(cbTransfered);
@@ -320,9 +320,16 @@ private:
 
         void CancelPendingOperation()
         {
-            if(!fPendingIO) return;
+            HRESULT hRes;
 
-            HRESULT hRes = pipeInstance.CancelIo();
+            if(fPendingIO)
+            {
+                DWORD dwBytesTransfered;
+                hRes = pipeInstance.CancelIoEx(&oOverlap);
+                hRes = pipeInstance.GetOverlappedResult(&oOverlap, dwBytesTransfered, true);
+                ATLASSERT(abort_succeeded(hRes));
+            }
+
             hRes = pipeInstance.DisconnectNamedPipe();
         }
 

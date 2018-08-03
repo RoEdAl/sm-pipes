@@ -31,14 +31,25 @@ public:
 
 protected:
 
+    template<DWORD error_code>
+    static bool check_win32_error(HRESULT hRes)
+    {
+        return hRes == HRESULT_FROM_WIN32(error_code);
+    }
+
     static inline bool more_data(HRESULT hRes)
     {
-        return hRes == HRESULT_FROM_WIN32(ERROR_MORE_DATA);
+        return check_win32_error<ERROR_MORE_DATA>(hRes);
     }
 
     static inline bool read_succeeded(HRESULT hRes)
     {
         return (SUCCEEDED(hRes) || more_data(hRes));
+    }
+
+    static inline bool abort_succeeded(HRESULT hRes)
+    {
+        return (SUCCEEDED(hRes) || check_win32_error<ERROR_OPERATION_ABORTED>(hRes));
     }
 
     typedef CAtlArray<BYTE> Buffer;
