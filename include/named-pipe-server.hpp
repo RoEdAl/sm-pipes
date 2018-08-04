@@ -47,7 +47,6 @@ public:
             m_aWaitObjects[i] = ev.m_h;
 
             CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev.m_h);
-            pPipeInstance->ConnectToNewClient();
             m_aInstance.GetAt(i).Attach(pPipeInstance);
 
             m_aInstanceEvent.GetAt(i).Attach(ev.Detach());
@@ -125,6 +124,8 @@ private:
     {
         ATLASSERT(IsValid());
 
+        connect_pipes();
+
         bool bStop = false;
 
         while(!bStop)
@@ -175,14 +176,38 @@ private:
             }
         }
 
-        cancel_pending_operations();
+        disconnect_pipes();
     }
 
-    void cancel_pending_operations()
+    void connect_pipes()
     {
         for(size_t i = 0; i < INSTANCES; ++i)
         {
-            m_aInstance[i]->CancelPendingOperation();
+            m_aInstance[i]->ConnectToNewClient();
+        }
+    }
+
+    void disconnect_pipes()
+    {
+        HANDLE aHandle[INSTANCES], h;
+        DWORD dwCnt = 0, dwWaitRes;
+        HRESULT hRes;
+
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            h = m_aInstance[i]->CancelPendingOperation();
+            if(h != nullptr)
+            {
+                aHandle[dwCnt++] = h;
+            }
+        }
+
+        dwWaitRes = ::WaitForMultipleObjects(dwCnt, aHandle, true, INFINITE);
+        ATLASSERT(dwWaitRes >= WAIT_OBJECT_0 && dwWaitRes < (WAIT_OBJECT_0 + dwCnt));
+
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            hRes = m_aInstance[i]->FinishCancelingAndDisconnect();
         }
     }
 
@@ -242,6 +267,35 @@ private:
             ConnectToNewClient();
         }
 
+        HANDLE CancelPendingOperation()
+        {
+            if(fPendingIO)
+            {
+                HRESULT hRes = pipeInstance.CancelIoEx(&oOverlap);
+                ATLASSERT(SUCCEEDED(hRes));
+                return oOverlap.hEvent;
+            }
+
+            return nullptr;
+        }
+
+        HRESULT FinishCancelingAndDisconnect()
+        {
+            HRESULT hRes;
+
+            if(fPendingIO)
+            {
+                DWORD dwBytesTransfered;
+                hRes = pipeInstance.GetOverlappedResult(&oOverlap, dwBytesTransfered, true);
+                if(abort_succeeded(hRes))
+                {
+                    fPendingIO = false;
+                }
+            }
+            hRes = pipeInstance.DisconnectNamedPipe();
+            return hRes;
+        }
+
         void Run()
         {
             DWORD cbTransfered;
@@ -297,14 +351,14 @@ private:
                                     AtlThrow(hRes);
                                 }
                             }
-                            else if(hRes != HRESULT_FROM_WIN32(ERROR_IO_PENDING))
-                            {
-                                AtlThrow(hRes);
-                            }
-                            else
+                            else if(win32_error<ERROR_IO_PENDING>(hRes))
                             {
                                 fPendingIO = true;
                                 break;
+                            }
+                            else
+                            {
+                                AtlThrow(hRes);
                             }
                         }
                         else
@@ -316,21 +370,6 @@ private:
                     break;
                 }
             }
-        }
-
-        void CancelPendingOperation()
-        {
-            HRESULT hRes;
-
-            if(fPendingIO)
-            {
-                DWORD dwBytesTransfered;
-                hRes = pipeInstance.CancelIoEx(&oOverlap);
-                hRes = pipeInstance.GetOverlappedResult(&oOverlap, dwBytesTransfered, true);
-                ATLASSERT(abort_succeeded(hRes));
-            }
-
-            hRes = pipeInstance.DisconnectNamedPipe();
         }
 
     protected:
