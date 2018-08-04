@@ -106,12 +106,6 @@ public:
 
 private:
 
-    bool m_bValid;
-    bool m_bCustomSecurityDesc;
-    CString m_sFullPipeName;
-
-private:
-
     static DWORD WINAPI thread_proc(LPVOID _pThis)
     {
         named_pipe_server* pThis = static_cast<named_pipe_server*>(_pThis);
@@ -409,6 +403,10 @@ private:
         }
     };
 
+private:
+
+    bool m_bValid;
+    CString m_sFullPipeName;
     INSTANCENO m_instanceCnt;
     CHandle m_evStop;
     CHandle m_evWrite;
