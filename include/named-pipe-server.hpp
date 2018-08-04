@@ -5,27 +5,39 @@
 #ifndef _NAMED_PIPE_SEVER_HPP_
 #define _NAMED_PIPE_SEVER_HPP_
 
-#include "security-routines.hpp"
+#include "sm-pipe-name-routines.hpp"
+#include "hres-routines.hpp"
 
-template<size_t INSTANCES, size_t BUFSIZE>
+//using namespace hres_routines;
+
+template<size_t INSTANCES, size_t BUFSIZE, typename S>
 class named_pipe_server :public pipe_server_basics
 {
 public:
 
-    named_pipe_server()
+    named_pipe_server(S& securityPolicy)
     {
-        if(!security_routines::get_owner_and_logon_sid(&m_ownerSid, &m_logonSid))
+        m_bValid = true;
+
+        bool bCustomSecurityAttr = false;
+        CSecurityDesc sd;
+        CSecurityAttributes sa;
+
+        if(!securityPolicy.Init())
         {
+            m_bValid = false;
             return;
         }
 
         m_instanceCnt = 0;
 
-        m_sFullPipeName = sm_pipe_name_routines::get_full_pipe_name(sm_pipe_name_routines::get_sm_pipe_name(m_logonSid));
+        m_sFullPipeName = sm_pipe_name_routines::get_full_pipe_name(securityPolicy.GetPipeName());
 
-        CSecurityDesc sd;
-        build_security_descriptor(sd);
-        m_sa.Set(sd);
+        if(securityPolicy.BuildSecurityDesc(sd))
+        {
+            sa.Set(sd);
+            bCustomSecurityAttr = true;
+        }
 
         create_event(m_evStop);
         create_event(m_evWrite);
@@ -41,7 +53,7 @@ public:
             CNamedPipe pipe;
 
             create_event(ev);
-            create_named_pipe(pipe);
+            create_named_pipe(pipe, bCustomSecurityAttr, sa);
 
             m_aWaitObjects[i] = ev.m_h;
 
@@ -89,15 +101,14 @@ public:
 
     bool IsValid() const
     {
-        return m_logonSid.IsValid();
+        return m_bValid;
     }
 
 private:
 
-    CSid m_ownerSid;
-    CSid m_logonSid;
+    bool m_bValid;
+    bool m_bCustomSecurityDesc;
     CString m_sFullPipeName;
-    CSecurityAttributes m_sa;
 
 private:
 
@@ -118,6 +129,7 @@ private:
     void thread_proc()
     {
         ATLASSERT(IsValid());
+        using namespace hres_routines;
 
         connect_pipes();
 
@@ -160,7 +172,7 @@ private:
                     }
                         _ATLCATCH(e)
                     {
-                        if(e.m_hr == HRESULT_FROM_WIN32(ERROR_BROKEN_PIPE))
+                        if(win32_error<ERROR_BROKEN_PIPE>(e.m_hr))
                         {
                             pPipe->DisconnectAndReconnect(++m_instanceCnt);
                         }
@@ -274,6 +286,8 @@ private:
 
         HRESULT FinishCancelingAndDisconnect()
         {
+            using namespace hres_routines;
+
             HRESULT hRes;
 
             if(m_fPendingIO)
@@ -291,6 +305,8 @@ private:
 
         void Run()
         {
+            using namespace hres_routines;
+
             if(m_fPendingIO)
             {
                 DWORD dwBytesTransfered;
@@ -402,22 +418,14 @@ private:
 
 protected:
 
-    void build_security_descriptor(CSecurityDesc& sd) const
-    {
-        CDacl dacl;
-        dacl.AddAllowedAce(m_ownerSid, STANDARD_RIGHTS_ALL | FILE_ALL_ACCESS);
-        dacl.AddAllowedAce(Sids::Admins(), FILE_ALL_ACCESS);
-        dacl.AddAllowedAce(m_logonSid, FILE_GENERIC_READ | FILE_WRITE_DATA);
-        sd.SetDacl(dacl);
-    }
 
-    void create_named_pipe(CNamedPipe& pipe) const
+    void create_named_pipe(CNamedPipe& pipe, bool bCustonSecurityAttr, CSecurityAttributes& sa) const
     {
         HRESULT hRes = pipe.CreateNamedPipe(m_sFullPipeName,
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
             INSTANCES, BUFSIZE, BUFSIZE, PIPE_CONNECT_TIMEOUT,
-            const_cast<CSecurityAttributes *>(&m_sa));
+            const_cast<CSecurityAttributes *>(bCustonSecurityAttr? &sa : nullptr));
 
         if(FAILED(hRes))
         {

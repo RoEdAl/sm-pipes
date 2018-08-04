@@ -12,23 +12,31 @@
 
 namespace
 {
-#include <security-routines.hpp>
-#include <sm-pipe-name-routines.hpp>
+#include <hres-routines.hpp>
 #include <named-pipe.hpp>
+#include <security-policy.hpp>
+
+    // specify ONE security policy
+    //typedef logon_sesssion_security_policy default_security_policy;
+    typedef no_security_policy default_security_policy;
 }
+
+using namespace hres_routines;
 
 int main()
 {
-    CSid logonSid;
 
-    if(!security_routines::get_logon_sid(&logonSid)) return 1;
-    CString sPipeName(sm_pipe_name_routines::get_full_pipe_name(sm_pipe_name_routines::get_sm_pipe_name(logonSid)));
+    default_security_policy security_policy;
+
+    if(!security_policy.Init()) return 1;
+    CString sPipeName(sm_pipe_name_routines::get_full_pipe_name(security_policy.GetPipeName()));
+
     CNamedPipe pipe;
 
     while(true)
     {
         HRESULT hRes = pipe.Create(sPipeName, GENERIC_READ | GENERIC_WRITE, 0, OPEN_EXISTING);
-        if(hRes == HRESULT_FROM_WIN32(ERROR_PIPE_BUSY))
+        if(win32_error<ERROR_PIPE_BUSY>(hRes))
         {
             if(!::WaitNamedPipe(sPipeName, 5000))
             {
