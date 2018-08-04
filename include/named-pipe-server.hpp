@@ -181,34 +181,23 @@ private:
 
     void connect_pipes()
     {
-        for(size_t i = 0; i < INSTANCES; ++i)
-        {
-            m_aInstance[i]->ConnectToNewClient();
-        }
+        for_each_instance([](auto& instance) {instance.ConnectToNewClient();});
     }
 
     void disconnect_pipes()
     {
-        HANDLE aHandle[INSTANCES], h;
-        DWORD dwCnt = 0, dwWaitRes;
-        HRESULT hRes;
+        HANDLE aHandle[INSTANCES];
+        DWORD dwCnt = 0;
 
-        for(size_t i = 0; i < INSTANCES; ++i)
-        {
-            h = m_aInstance[i]->CancelPendingOperation();
-            if(h != nullptr)
-            {
-                aHandle[dwCnt++] = h;
-            }
-        }
+        for_each_instance([&aHandle, &dwCnt](auto& instance) {
+            HANDLE h = instance.CancelPendingOperation();
+            if(h != nullptr) aHandle[dwCnt++] = h;
+        });
 
-        dwWaitRes = ::WaitForMultipleObjects(dwCnt, aHandle, true, INFINITE);
-        ATLASSERT(dwWaitRes >= WAIT_OBJECT_0 && dwWaitRes < (WAIT_OBJECT_0 + dwCnt));
+        DWORD dwRes = ::WaitForMultipleObjects(dwCnt, aHandle, true, INFINITE);
+        ATLASSERT(dwRes >= WAIT_OBJECT_0 && dwRes < (WAIT_OBJECT_0 + dwCnt));
 
-        for(size_t i = 0; i < INSTANCES; ++i)
-        {
-            hRes = m_aInstance[i]->FinishCancelingAndDisconnect();
-        }
+        for_each_instance([](auto& instance) {instance.FinishCancelingAndDisconnect();});
     }
 
     class CPipeInstance
@@ -416,6 +405,14 @@ private:
 
 protected:
 
+    template<typename O>
+    void for_each_instance(O operation)
+    {
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            operation(*(m_aInstance[i].m_p));
+        }
+    }
 
     void create_named_pipe(CNamedPipe& pipe, bool bCustonSecurityAttr, CSecurityAttributes& sa) const
     {
