@@ -12,7 +12,6 @@ class pipe_server_basics
 public:
 
     static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
-    static const DWORD PIPE_WAIT_TIMEOUT = 500;
 #ifdef _DEBUG
     static const DWORD WORKER_THREAD_FINISH_TIMEOUT = 60 * 60 * 1000;
 #else

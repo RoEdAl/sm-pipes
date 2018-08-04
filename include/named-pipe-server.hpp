@@ -125,9 +125,8 @@ private:
 
         while(!bStop)
         {
-            DWORD dwWait = ::WaitForMultipleObjects(INSTANCES + 2, m_aWaitObjects, false, PIPE_WAIT_TIMEOUT);
+            DWORD dwWait = ::WaitForMultipleObjects(INSTANCES + 2, m_aWaitObjects, false, INFINITE);
 
-            if(dwWait == WAIT_TIMEOUT) continue;
             if(dwWait == WAIT_FAILED)
             {
                 bStop = true;
