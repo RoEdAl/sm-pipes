@@ -33,7 +33,6 @@ public:
         m_aWaitObjects[INSTANCES] = m_evStop;
         m_aWaitObjects[INSTANCES + 1] = m_evWrite;
 
-        m_aInstanceEvent.SetCount(INSTANCES);
         m_aInstance.SetCount(INSTANCES);
 
         for(size_t i = 0; i < INSTANCES; ++i)
@@ -46,23 +45,18 @@ public:
 
             m_aWaitObjects[i] = ev.m_h;
 
-            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev.m_h);
+            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev);
             m_aInstance.GetAt(i).Attach(pPipeInstance);
-
-            m_aInstanceEvent.GetAt(i).Attach(ev.Detach());
-
         }
     }
 
     // run in separate thread
     HRESULT Run()
     {
-        if(m_thread.m_h != NULL) return E_FAIL;
+        if(m_thread.m_h != nullptr) return E_FAIL;
 
-        DWORD idThread;
-
-        HANDLE hThread = ::CreateThread(NULL, 0, thread_proc, this, CREATE_SUSPENDED, &idThread);
-        if(hThread == NULL)
+        HANDLE hThread = ::CreateThread(nullptr, 0, thread_proc, this, CREATE_SUSPENDED, nullptr);
+        if(hThread == nullptr)
         {
             return AtlHresultFromLastError();
         }
@@ -74,7 +68,7 @@ public:
 
     HRESULT Stop()
     {
-        if(m_thread.m_h == NULL) return S_FALSE;
+        if(m_thread.m_h == nullptr) return S_FALSE;
 
         set_event(m_evStop);
         DWORD dwRes = ::WaitForSingleObject(m_thread, WORKER_THREAD_FINISH_TIMEOUT);
@@ -84,6 +78,7 @@ public:
             return S_FALSE;
         }
 
+        m_thread.Close();
         return S_OK;
     }
 
@@ -215,34 +210,26 @@ private:
     {
     public:
 
-        CPipeInstance(INSTANCENO _instanceNo, CNamedPipe& _pipeInstance, HANDLE _hEvent)
+        CPipeInstance(INSTANCENO instanceNo, CNamedPipe& pipeInstance, CHandle& evOverlap)
+            :m_instanceNo(instanceNo), m_pipeInstance(pipeInstance), m_evOverlap(evOverlap),
+             m_eState(INSTANCE_STATE_CONNECTING), m_fPendingIO(false)
         {
-            instanceNo = _instanceNo;
-
-            ZeroMemory(&oOverlap, sizeof(OVERLAPPED));
-            oOverlap.hEvent = _hEvent;
-
-            pipeInstance.Attach(_pipeInstance.Detach());
-
-            eState = INSTANCE_STATE_CONNECTING;
-            fPendingIO = false;
+            ZeroMemory(&m_oOverlap, sizeof(OVERLAPPED));
+            m_oOverlap.hEvent = m_evOverlap;
         }
 
         void ConnectToNewClient()
         {
-            HRESULT hRes = pipeInstance.ConnectNamedPipe(&oOverlap);
+            HRESULT hRes = m_pipeInstance.ConnectNamedPipe(&m_oOverlap);
 
             switch(hRes)
             {
                 case HRESULT_FROM_WIN32(ERROR_IO_PENDING):
-                fPendingIO = true;
+                m_fPendingIO = true;
                 break;
 
                 case HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
-                if(!::SetEvent(oOverlap.hEvent))
-                {
-                    AtlThrowLastWin32();
-                }
+                set_event(m_evOverlap);
                 break;
 
                 default:
@@ -250,30 +237,36 @@ private:
                 break;
             }
 
-            eState = fPendingIO ? INSTANCE_STATE_CONNECTING : INSTANCE_STATE_READING;
+            m_eState = m_fPendingIO ? INSTANCE_STATE_CONNECTING : INSTANCE_STATE_READING;
         }
 
-        void DisconnectAndReconnect(INSTANCENO _instanceNo)
+        void DisconnectAndReconnect(INSTANCENO instanceNo)
         {
-            ATLASSERT(!fPendingIO);
-            HRESULT hRes = pipeInstance.DisconnectNamedPipe();
+            ATLASSERT(!m_fPendingIO);
+            HRESULT hRes = m_pipeInstance.DisconnectNamedPipe();
             ATLASSUME(SUCCEEDED(hRes));
 
-            eState = INSTANCE_STATE_CONNECTING;
-            fPendingIO = false;
-            instanceNo = _instanceNo;
-            inputBuffer.Clear();
-            outputBuffer.Clear();
+            m_eState = INSTANCE_STATE_CONNECTING;
+            m_fPendingIO = false;
+            m_instanceNo = instanceNo;
+            m_inputBuffer.Clear();
+            m_outputBuffer.Clear();
             ConnectToNewClient();
         }
 
         HANDLE CancelPendingOperation()
         {
-            if(fPendingIO)
+            if(m_fPendingIO)
             {
-                HRESULT hRes = pipeInstance.CancelIoEx(&oOverlap);
-                ATLASSERT(SUCCEEDED(hRes));
-                return oOverlap.hEvent;
+                HRESULT hRes = m_pipeInstance.CancelIoEx(&m_oOverlap);
+                if(SUCCEEDED(hRes))
+                {
+                    return m_evOverlap;
+                }
+                else
+                {
+                    AtlThrowLastWin32();
+                }
             }
 
             return nullptr;
@@ -283,37 +276,37 @@ private:
         {
             HRESULT hRes;
 
-            if(fPendingIO)
+            if(m_fPendingIO)
             {
                 DWORD dwBytesTransfered;
-                hRes = pipeInstance.GetOverlappedResult(&oOverlap, dwBytesTransfered, true);
+                hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
                 if(abort_succeeded(hRes))
                 {
-                    fPendingIO = false;
+                    m_fPendingIO = false;
                 }
             }
-            hRes = pipeInstance.DisconnectNamedPipe();
+            hRes = m_pipeInstance.DisconnectNamedPipe();
             return hRes;
         }
 
         void Run()
         {
             DWORD cbTransfered;
-            fPendingIO = false;
-            HRESULT hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, true);
+            m_fPendingIO = false;
+            HRESULT hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, cbTransfered, true);
             if(!read_succeeded(hRes))
             {
                 AtlThrow(hRes);
             }
 
-            switch(eState)
+            switch(m_eState)
             {
                 case INSTANCE_STATE_CONNECTING:
-                eState = INSTANCE_STATE_READING;
+                m_eState = INSTANCE_STATE_READING;
                 break;
 
                 case INSTANCE_STATE_READING:
-                inputBuffer.TrimLastChunk(cbTransfered);
+                m_inputBuffer.TrimLastChunk(cbTransfered);
                 if(!more_data(hRes))
                 {
                     message_completed();
@@ -322,25 +315,25 @@ private:
             }
 
             // read/write (again)
-            switch(eState)
+            switch(m_eState)
             {
                 case INSTANCE_STATE_READING:
                 {
                     while(true)
                     {
                         DWORD cbBytesLeftInThisMessage;
-                        hRes = pipeInstance.PeekNamedPipe(cbBytesLeftInThisMessage);
+                        hRes = m_pipeInstance.PeekNamedPipe(cbBytesLeftInThisMessage);
                         if(SUCCEEDED(hRes))
                         {
                             // TODO: validate message size
-                            Buffer& buffer = inputBuffer.AddBuffer(cbBytesLeftInThisMessage > 0 ? cbBytesLeftInThisMessage : BUFSIZE);
-                            hRes = pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &oOverlap);
+                            Buffer& buffer = m_inputBuffer.AddBuffer(cbBytesLeftInThisMessage > 0 ? cbBytesLeftInThisMessage : BUFSIZE);
+                            hRes = m_pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &m_oOverlap);
                             if(read_succeeded(hRes))
                             {
-                                hRes = pipeInstance.GetOverlappedResult(&oOverlap, cbTransfered, true);
+                                hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, cbTransfered, true);
                                 if(read_succeeded(hRes))
                                 {
-                                    inputBuffer.TrimLastChunk(cbTransfered);
+                                    m_inputBuffer.TrimLastChunk(cbTransfered);
                                     if(!more_data(hRes))
                                     {
                                         message_completed();
@@ -353,7 +346,7 @@ private:
                             }
                             else if(win32_error<ERROR_IO_PENDING>(hRes))
                             {
-                                fPendingIO = true;
+                                m_fPendingIO = true;
                                 break;
                             }
                             else
@@ -374,22 +367,23 @@ private:
 
     protected:
 
-        OVERLAPPED oOverlap;
-        INSTANCENO instanceNo;
-        CNamedPipe pipeInstance;
-        CChunkedBuffer inputBuffer;
-        CChunkedBuffer outputBuffer;
-        INSTANCE_STATE eState;
-        bool fPendingIO;
+        OVERLAPPED m_oOverlap;
+        CHandle m_evOverlap;
+        INSTANCENO m_instanceNo;
+        CNamedPipe m_pipeInstance;
+        CChunkedBuffer m_inputBuffer;
+        CChunkedBuffer m_outputBuffer;
+        INSTANCE_STATE m_eState;
+        bool m_fPendingIO;
 
     protected:
 
         void message_completed()
         {
             Buffer buffer;
-            inputBuffer.GetData(buffer);
+            m_inputBuffer.GetData(buffer);
             // TODO: do something with this buffer
-            inputBuffer.Clear();
+            m_inputBuffer.Clear();
         }
     };
 
@@ -397,7 +391,6 @@ private:
     CHandle m_evStop;
     CHandle m_evWrite;
     HANDLE m_aWaitObjects[INSTANCES + 2];
-    CAtlArray<CHandle> m_aInstanceEvent;
     CAutoPtrArray<CPipeInstance> m_aInstance;
     CHandle m_thread;
 
@@ -429,12 +422,12 @@ protected:
     static void create_event(CHandle& ev)
     {
         HANDLE hEvent = ::CreateEvent(
-            NULL,    // default security attribute 
+            nullptr,    // default security attribute 
             true,    // manual-reset event 
-            false,    // initial state = signaled 
-            NULL);   // unnamed event object 
+            false,    // initial state = nonsignaled 
+            nullptr);   // unnamed event object 
 
-        if(hEvent == NULL)
+        if(hEvent == nullptr)
         {
             AtlThrowLastWin32();
         }
