@@ -251,6 +251,7 @@ private:
             m_instanceNo = instanceNo;
             m_inputBuffer.Clear();
             m_outputBuffer.Clear();
+
             ConnectToNewClient();
         }
 
@@ -265,7 +266,7 @@ private:
                 }
                 else
                 {
-                    AtlThrowLastWin32();
+                    AtlThrow(hRes);
                 }
             }
 
@@ -291,27 +292,31 @@ private:
 
         void Run()
         {
-            DWORD cbTransfered;
-            m_fPendingIO = false;
-            HRESULT hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, cbTransfered, true);
-            if(!read_succeeded(hRes))
+            if(m_fPendingIO)
             {
-                AtlThrow(hRes);
-            }
+                DWORD dwBytesTransfered;
 
-            switch(m_eState)
-            {
-                case INSTANCE_STATE_CONNECTING:
-                m_eState = INSTANCE_STATE_READING;
-                break;
-
-                case INSTANCE_STATE_READING:
-                m_inputBuffer.TrimLastChunk(cbTransfered);
-                if(!more_data(hRes))
+                m_fPendingIO = false;
+                HRESULT hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
+                if(!read_succeeded(hRes))
                 {
-                    message_completed();
+                    AtlThrow(hRes);
                 }
-                break;
+
+                switch(m_eState)
+                {
+                    case INSTANCE_STATE_CONNECTING:
+                    m_eState = INSTANCE_STATE_READING;
+                    break;
+
+                    case INSTANCE_STATE_READING:
+                    m_inputBuffer.TrimLastChunk(dwBytesTransfered);
+                    if(!more_data(hRes))
+                    {
+                        message_completed();
+                    }
+                    break;
+                }
             }
 
             // read/write (again)
@@ -321,19 +326,21 @@ private:
                 {
                     while(true)
                     {
-                        DWORD cbBytesLeftInThisMessage;
-                        hRes = m_pipeInstance.PeekNamedPipe(cbBytesLeftInThisMessage);
+                        HRESULT hRes;
+                        DWORD dwBytesTransfered, dwBytesLeftInThisMessage;
+
+                        hRes = m_pipeInstance.PeekNamedPipe(dwBytesLeftInThisMessage);
                         if(SUCCEEDED(hRes))
                         {
                             // TODO: validate message size
-                            Buffer& buffer = m_inputBuffer.AddBuffer(cbBytesLeftInThisMessage > 0 ? cbBytesLeftInThisMessage : BUFSIZE);
-                            hRes = m_pipeInstance.Read(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()), &m_oOverlap);
+                            Buffer& buffer = m_inputBuffer.AddBuffer(dwBytesLeftInThisMessage > 0 ? dwBytesLeftInThisMessage : BUFSIZE);
+                            hRes = m_pipeInstance.ReadToArray(buffer, &m_oOverlap);
                             if(read_succeeded(hRes))
                             {
-                                hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, cbTransfered, true);
+                                hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
                                 if(read_succeeded(hRes))
                                 {
-                                    m_inputBuffer.TrimLastChunk(cbTransfered);
+                                    m_inputBuffer.TrimLastChunk(dwBytesTransfered);
                                     if(!more_data(hRes))
                                     {
                                         message_completed();

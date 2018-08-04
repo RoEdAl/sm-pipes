@@ -64,15 +64,12 @@ public:
             lpTotalBytesAvail,
             lpBytesLeftThisMessage
         );
-
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT PeekNamedPipe(DWORD& cbBytesLeftThisMessage)
@@ -88,14 +85,12 @@ public:
             &cbBytesLeftThisMessage
         );
 
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT ConnectNamedPipe(
@@ -105,28 +100,26 @@ public:
         ATLASSUME(m_h != NULL);
 
         BOOL fResult = ::ConnectNamedPipe(m_h, lpOverlapped);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
+            
         }
+
+        return S_OK;
     }
 
     HRESULT DisconnectNamedPipe()
     {
         ATLASSUME(m_h != NULL);
+
         BOOL fResult = ::DisconnectNamedPipe(m_h);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT SetNamedPipeHandleState(
@@ -136,37 +129,35 @@ public:
     )
     {
         ATLASSUME(m_h != NULL);
+
         BOOL fResult = ::SetNamedPipeHandleState(
             m_h,
             lpMode,
             lpMaxCollectionCount,
             lpCollectDataTimeout);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT SetNamedPipeHandleState(DWORD dwMode = PIPE_READMODE_MESSAGE)
     {
         ATLASSUME(m_h != NULL);
+
         BOOL fResult = ::SetNamedPipeHandleState(
             m_h,
             &dwMode,
             nullptr,
             nullptr);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT CancelIo()
@@ -174,14 +165,12 @@ public:
         ATLASSUME(m_h != NULL);
 
         BOOL fResult = ::CancelIo(m_h);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
     }
 
     HRESULT CancelIoEx(LPOVERLAPPED lpOverlapped = nullptr)
@@ -189,14 +178,32 @@ public:
         ATLASSUME(m_h != NULL);
 
         BOOL fResult = ::CancelIoEx(m_h, lpOverlapped);
-        if(fResult)
-        {
-            return S_OK;
-        }
-        else
+        if(!fResult)
         {
             return AtlHresultFromLastError();
         }
+
+        return S_OK;
+    }
+
+    template<typename T>
+    HRESULT ReadToArray(
+        CAtlArray<T>& buffer,
+        LPOVERLAPPED pOverlapped)
+    {
+        ATLASSUME(m_h != NULL);
+
+        BOOL fResult = ::ReadFile(m_h, 
+            reinterpret_cast<LPVOID>(buffer.GetData()),
+            static_cast<DWORD>(buffer.GetCount() * sizeof(T)),
+            nullptr,
+            pOverlapped);
+        if(!fResult)
+        {
+            return AtlHresultFromLastError();
+        }
+
+        return S_OK;
     }
 };
 
