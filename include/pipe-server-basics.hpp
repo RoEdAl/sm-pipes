@@ -9,7 +9,7 @@
 
 class pipe_server_basics
 {
-public:
+protected:
 
     static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
 #ifdef _DEBUG
@@ -26,11 +26,23 @@ public:
         INSTANCE_STATE_WRITING
     };
 
+public:
+
     typedef ULONG64 INSTANCENO;
+    typedef CAtlArray<BYTE> Buffer;
+
+    class INotify
+    {
+    public:
+        virtual ~INotify() {};
+
+    public:
+        virtual void OnConnect(INSTANCENO) = 0;
+        virtual void OnMessage(INSTANCENO, const Buffer&) = 0;
+        virtual void OnDisconnect(INSTANCENO) = 0;
+    };
 
 protected:
-
-    typedef CAtlArray<BYTE> Buffer;
 
     class CChunkedBuffer
     {

@@ -29,7 +29,8 @@ private:
 
 public:
 
-    named_pipe_server()
+    named_pipe_server(INotify& notifier)
+        :m_notifier(notifier)
     {
         init();
         m_sFullPipeName = sm_pipe_name_routines::get_full_pipe_name(S::GetPipeName());
@@ -44,12 +45,12 @@ public:
 
             m_aWaitObjects[i] = ev.m_h;
 
-            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev);
+            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev, notifier);
             m_aInstance.GetAt(i).Attach(pPipeInstance);
         }
     }
 
-    named_pipe_server(S& securityPolicy)
+    named_pipe_server(S& securityPolicy, INotify& notifier)
     {
         init();
 
@@ -81,7 +82,7 @@ public:
 
             m_aWaitObjects[i] = ev.m_h;
 
-            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev);
+            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev, notifier);
             m_aInstance.GetAt(i).Attach(pPipeInstance);
         }
     }
@@ -130,7 +131,7 @@ public:
 
 private:
 
-    static unsigned __stdcall thread_proc(LPVOID _pThis)
+    static unsigned __stdcall thread_proc(void* _pThis)
     {
         named_pipe_server* pThis = reinterpret_cast<named_pipe_server*>(_pThis);
         _ATLTRY
@@ -231,8 +232,8 @@ private:
     {
     public:
 
-        CPipeInstance(INSTANCENO instanceNo, CNamedPipe& pipeInstance, CHandle& evOverlap)
-            :m_instanceNo(instanceNo), m_pipeInstance(pipeInstance), m_evOverlap(evOverlap),
+        CPipeInstance(INSTANCENO instanceNo, CNamedPipe& pipeInstance, CHandle& evOverlap, INotify& notifier)
+            :m_instanceNo(instanceNo), m_pipeInstance(pipeInstance), m_evOverlap(evOverlap), m_notifier(notifier),
              m_eState(INSTANCE_STATE_CONNECTING), m_fPendingIO(false)
         {
             ZeroMemory(&m_oOverlap, sizeof(OVERLAPPED));
@@ -251,6 +252,7 @@ private:
 
                 case HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
                 set_event(m_evOverlap);
+                m_notifier.OnConnect(m_instanceNo);
                 break;
 
                 default:
@@ -266,6 +268,7 @@ private:
             ATLASSERT(!m_fPendingIO);
             HRESULT hRes = m_pipeInstance.DisconnectNamedPipe();
             ATLASSUME(SUCCEEDED(hRes));
+            m_notifier.OnDisconnect(m_instanceNo);
 
             m_eState = INSTANCE_STATE_CONNECTING;
             m_fPendingIO = false;
@@ -307,6 +310,10 @@ private:
                 if(abort_succeeded(hRes))
                 {
                     m_fPendingIO = false;
+                    if(m_eState != INSTANCE_STATE_CONNECTING)
+                    {
+                        m_notifier.OnDisconnect(m_instanceNo);
+                    }
                 }
             }
             hRes = m_pipeInstance.DisconnectNamedPipe();
@@ -332,6 +339,7 @@ private:
                 {
                     case INSTANCE_STATE_CONNECTING:
                     m_eState = INSTANCE_STATE_READING;
+                    m_notifier.OnConnect(m_instanceNo);
                     break;
 
                     case INSTANCE_STATE_READING:
@@ -407,6 +415,7 @@ private:
         CChunkedBuffer m_outputBuffer;
         INSTANCE_STATE m_eState;
         bool m_fPendingIO;
+        INotify& m_notifier;
 
     protected:
 
@@ -414,7 +423,7 @@ private:
         {
             Buffer buffer;
             m_inputBuffer.GetData(buffer);
-            // TODO: do something with this buffer
+            m_notifier.OnMessage(m_instanceNo, buffer);
             m_inputBuffer.Clear();
         }
     };
@@ -429,6 +438,7 @@ private:
     HANDLE m_aWaitObjects[INSTANCES + 2];
     CAutoPtrArray<CPipeInstance> m_aInstance;
     CHandle m_thread;
+    INotify& m_notifier;
 
 protected:
 
