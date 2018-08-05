@@ -6,6 +6,8 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
 # specify project name and its version
 PROJECT(SMPipes VERSION 0.9.0.0)
 
+OPTION(USE_LOGON_SESSION "Logon session" OFF) 
+
 # generate configure file
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/SMPipesConfig.h.in"

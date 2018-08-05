@@ -10,19 +10,9 @@
 
 struct no_security_policy
 {
-    static bool Init()
-    {
-        return true;
-    }
-
     static LPCTSTR GetPipeName()
     {
         return sm_pipe_name_routines::SM_PIPE_PREFIX;
-    }
-
-    static bool BuildSecurityDesc(CSecurityDesc& sd)
-    {
-        return false;
     }
 };
 

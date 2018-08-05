@@ -8,16 +8,50 @@
 #include "sm-pipe-name-routines.hpp"
 #include "hres-routines.hpp"
 
-//using namespace hres_routines;
-
 template<size_t INSTANCES, size_t BUFSIZE, typename S>
 class named_pipe_server :public pipe_server_basics
 {
+private:
+
+    void init()
+    {
+        m_bValid = true;
+        m_instanceCnt = 0;
+
+        create_event(m_evStop);
+        create_event(m_evWrite);
+
+        m_aWaitObjects[INSTANCES] = m_evStop;
+        m_aWaitObjects[INSTANCES + 1] = m_evWrite;
+
+        m_aInstance.SetCount(INSTANCES);
+    }
+
 public:
+
+    named_pipe_server()
+    {
+        init();
+        m_sFullPipeName = sm_pipe_name_routines::get_full_pipe_name(S::GetPipeName());
+
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            CHandle ev;
+            CNamedPipe pipe;
+
+            create_event(ev);
+            create_named_pipe(pipe);
+
+            m_aWaitObjects[i] = ev.m_h;
+
+            CPipeInstance* pPipeInstance = new CPipeInstance(++m_instanceCnt, pipe, ev);
+            m_aInstance.GetAt(i).Attach(pPipeInstance);
+        }
+    }
 
     named_pipe_server(S& securityPolicy)
     {
-        m_bValid = true;
+        init();
 
         bool bCustomSecurityAttr = false;
         CSecurityDesc sd;
@@ -29,8 +63,6 @@ public:
             return;
         }
 
-        m_instanceCnt = 0;
-
         m_sFullPipeName = sm_pipe_name_routines::get_full_pipe_name(securityPolicy.GetPipeName());
 
         if(securityPolicy.BuildSecurityDesc(sd))
@@ -38,14 +70,6 @@ public:
             sa.Set(sd);
             bCustomSecurityAttr = true;
         }
-
-        create_event(m_evStop);
-        create_event(m_evWrite);
-
-        m_aWaitObjects[INSTANCES] = m_evStop;
-        m_aWaitObjects[INSTANCES + 1] = m_evWrite;
-
-        m_aInstance.SetCount(INSTANCES);
 
         for(size_t i = 0; i < INSTANCES; ++i)
         {
@@ -67,14 +91,14 @@ public:
     {
         if(m_thread.m_h != nullptr) return E_FAIL;
 
-        HANDLE hThread = ::CreateThread(nullptr, 0, thread_proc, this, CREATE_SUSPENDED, nullptr);
+        HANDLE hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, thread_proc, this, CREATE_SUSPENDED, nullptr));
         if(hThread == nullptr)
         {
-            return AtlHresultFromLastError();
+            return E_FAIL;
         }
 
         m_thread.Attach(hThread);
-        ::ResumeThread(hThread);
+        resume_thread(hThread);
         return S_OK;
     }
 
@@ -106,15 +130,15 @@ public:
 
 private:
 
-    static DWORD WINAPI thread_proc(LPVOID _pThis)
+    static unsigned __stdcall thread_proc(LPVOID _pThis)
     {
-        named_pipe_server* pThis = static_cast<named_pipe_server*>(_pThis);
+        named_pipe_server* pThis = reinterpret_cast<named_pipe_server*>(_pThis);
         _ATLTRY
         {
             pThis->thread_proc();
             return S_OK;
         }
-            _ATLCATCH(e)
+        _ATLCATCH(e)
         {
             return e.m_hr;
         }
@@ -140,14 +164,7 @@ private:
                 continue;
             }
 
-            int i = dwWait - WAIT_OBJECT_0;
-            if((i < 0) || (i >= (INSTANCES + 2)))
-            {
-                // index out of range
-                bStop = true;
-            }
-
-            switch(i)
+            switch(dwWait - WAIT_OBJECT_0)
             {
                 case INSTANCES: // m_evStop
                 bStop = true;
@@ -157,20 +174,30 @@ private:
                 // TODO
                 break;
 
-                default:
+                default: // signal from pipe instance
                 {
+                    int i = dwWait - WAIT_OBJECT_0;
+                    if((i < 0) || (i >= INSTANCES))
+                    {
+                        // index out of range
+                        bStop = true;
+                        AtlThrow(HRESULT_FROM_WIN32(ERROR_INVALID_INDEX));
+                        break;
+                    }
+
                     CAutoPtr<CPipeInstance>& pPipe = m_aInstance[i];
                     _ATLTRY
                     {
                         pPipe->Run();
                     }
-                        _ATLCATCH(e)
+                    _ATLCATCH(e)
                     {
                         if(win32_error<ERROR_BROKEN_PIPE>(e.m_hr))
                         {
                             pPipe->DisconnectAndReconnect(++m_instanceCnt);
                         }
                     }
+
                     break;
                 }
             }
@@ -414,6 +441,20 @@ protected:
         }
     }
 
+    void create_named_pipe(CNamedPipe& pipe) const
+    {
+        HRESULT hRes = pipe.CreateNamedPipe(m_sFullPipeName,
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+            INSTANCES, BUFSIZE, BUFSIZE, PIPE_CONNECT_TIMEOUT,
+            nullptr);
+
+        if(FAILED(hRes))
+        {
+            AtlThrow(hRes);
+        }
+    }
+
     void create_named_pipe(CNamedPipe& pipe, bool bCustonSecurityAttr, CSecurityAttributes& sa) const
     {
         HRESULT hRes = pipe.CreateNamedPipe(m_sFullPipeName,
@@ -448,6 +489,15 @@ protected:
     {
         BOOL fResult = ::SetEvent(ev);
         if(!fResult)
+        {
+            AtlThrowLastWin32();
+        }
+    }
+
+    static void resume_thread(HANDLE hThread)
+    {
+        DWORD dwRes = ::ResumeThread(hThread);
+        if(dwRes == ((DWORD)-1))
         {
             AtlThrowLastWin32();
         }

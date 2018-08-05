@@ -16,20 +16,24 @@ namespace
 #include <named-pipe.hpp>
 #include <security-policy.hpp>
 
-    // specify ONE security policy
-    //typedef logon_sesssion_security_policy default_security_policy;
+#ifdef USE_LOGON_SESSION
+    typedef logon_sesssion_security_policy default_security_policy;
+#else
     typedef no_security_policy default_security_policy;
+#endif
 }
 
 using namespace hres_routines;
 
 int main()
 {
-
+#ifdef USE_LOGON_SESSION
     default_security_policy security_policy;
-
     if(!security_policy.Init()) return 1;
     CString sPipeName(sm_pipe_name_routines::get_full_pipe_name(security_policy.GetPipeName()));
+#else
+    CString sPipeName(sm_pipe_name_routines::get_full_pipe_name(default_security_policy::GetPipeName()));
+#endif
 
     CNamedPipe pipe;
 
