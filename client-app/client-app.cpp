@@ -67,11 +67,11 @@ int main()
 
     // 1
     BOOL fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()));
-    _getch();
+	_gettch();
 
     // 2
     fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()/2));
-    _getch();
+	_gettch();
     return 0;
 }
 

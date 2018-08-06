@@ -57,7 +57,7 @@ int main()
 
     if(!server.IsValid()) return 1;
     server.Run();
-    _getch();
+	_gettch();
     server.Stop();
     return 0;
 }
