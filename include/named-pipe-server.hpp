@@ -51,6 +51,7 @@ public:
     }
 
     named_pipe_server(S& securityPolicy, INotify& notifier)
+		:m_notifier(notifier)
     {
         init();
 
@@ -246,11 +247,11 @@ private:
 
             switch(hRes)
             {
-                case HRESULT_FROM_WIN32(ERROR_IO_PENDING):
+                case __HRESULT_FROM_WIN32(ERROR_IO_PENDING):
                 m_fPendingIO = true;
                 break;
 
-                case HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
+                case __HRESULT_FROM_WIN32(ERROR_PIPE_CONNECTED):
                 set_event(m_evOverlap);
                 m_notifier.OnConnect(m_instanceNo);
                 break;
