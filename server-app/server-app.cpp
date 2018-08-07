@@ -13,7 +13,7 @@
 
 namespace
 {
-#include <pipe-server-basics.hpp>
+#include <critical-section.hpp>
 #include <named-pipe-server.hpp>
 #include <security-policy.hpp>
 

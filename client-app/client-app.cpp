@@ -12,6 +12,7 @@
 
 namespace
 {
+#include <named-pipe-client.hpp>
 #include <hres-routines.hpp>
 #include <named-pipe.hpp>
 #include <security-policy.hpp>
@@ -35,42 +36,25 @@ int main()
     CString sPipeName(sm_pipe_name_routines::get_full_pipe_name(default_security_policy::GetPipeName()));
 #endif
 
-    CNamedPipe pipe;
+	named_pipe_client<512> pipe_client(sPipeName);
 
-    while(true)
-    {
-        HRESULT hRes = pipe.Create(sPipeName, GENERIC_READ | GENERIC_WRITE, 0, OPEN_EXISTING);
-        if(win32_error<ERROR_PIPE_BUSY>(hRes))
-        {
-            if(!::WaitNamedPipe(sPipeName, 5000))
-            {
-                return 2;
-            }
-            else
-            {
-                continue;
-            }
-        }
-        break;
-    }
+	pipe_client.Run();
 
-    HRESULT hRes = pipe.SetNamedPipeHandleState(PIPE_READMODE_MESSAGE);
-    if(FAILED(hRes))
-    {
-        _tprintf(TEXT("SetNamedPipeHandleState failed. GLE=%d\n"), hRes);
-        return -1;
-    }
+	CAtlArray<BYTE> buffer;
+	buffer.SetCount(5 * 1024);
+	FillMemory(buffer.GetData(), buffer.GetCount(), 0x54);
 
-    CAtlArray<BYTE> buffer;
-    buffer.SetCount(5 * 1024);
-    FillMemory(buffer.GetData(), buffer.GetCount(), 0x54);
-
-    // 1
-    BOOL fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()));
+	// 1
+	pipe_client.SendMessage(buffer);
 	_gettch();
 
-    // 2
-    fWriteStatus = pipe.Write(buffer.GetData(), static_cast<DWORD>(buffer.GetCount()/2));
+	// 2
+	buffer.SetCount(buffer.GetCount() / 2);
+	pipe_client.SendMessage(buffer);
+
+	_gettch();
+	pipe_client.Stop();
+
 	_gettch();
     return 0;
 }

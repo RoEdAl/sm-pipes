@@ -6,19 +6,21 @@
 #define _NAMED_PIPE_SEVER_HPP_
 
 #include "sm-pipe-name-routines.hpp"
+#include "worker-thread.hpp"
 #include "hres-routines.hpp"
+#include "pipe-server-basics.hpp"
+#include "chunked-buffer.hpp"
 
 template<size_t INSTANCES, size_t BUFSIZE, typename S>
-class named_pipe_server :public pipe_server_basics
+class named_pipe_server :public pipe_server_basics, public worker_thread<named_pipe_server<INSTANCES,BUFSIZE,S>>
 {
 private:
 
     void init()
     {
-        m_bValid = true;
+        m_fValid = true;
         m_instanceCnt = 0;
 
-        create_event(m_evStop);
         create_event(m_evWrite);
 
         m_aWaitObjects[INSTANCES] = m_evStop;
@@ -55,13 +57,13 @@ public:
     {
         init();
 
-        bool bCustomSecurityAttr = false;
+        bool fCustomSecurityAttr = false;
         CSecurityDesc sd;
         CSecurityAttributes sa;
 
         if(!securityPolicy.Init())
         {
-            m_bValid = false;
+            m_fValid = false;
             return;
         }
 
@@ -70,7 +72,7 @@ public:
         if(securityPolicy.BuildSecurityDesc(sd))
         {
             sa.Set(sd);
-            bCustomSecurityAttr = true;
+            fCustomSecurityAttr = true;
         }
 
         for(size_t i = 0; i < INSTANCES; ++i)
@@ -79,7 +81,7 @@ public:
             CNamedPipe pipe;
 
             create_event(ev);
-            create_named_pipe(pipe, bCustomSecurityAttr, sa);
+            create_named_pipe(pipe, fCustomSecurityAttr, sa);
 
             m_aWaitObjects[i] = ev.m_h;
 
@@ -88,65 +90,12 @@ public:
         }
     }
 
-    // run in separate thread
-    HRESULT Run()
-    {
-        if(m_thread.m_h != nullptr) return E_FAIL;
-
-        HANDLE hThread = reinterpret_cast<HANDLE>(_beginthreadex(nullptr, 0, thread_proc, this, CREATE_SUSPENDED, nullptr));
-        if(hThread == nullptr)
-        {
-            return E_FAIL;
-        }
-
-        m_thread.Attach(hThread);
-        resume_thread(hThread);
-        return S_OK;
-    }
-
-    HRESULT Stop()
-    {
-        if(m_thread.m_h == nullptr) return S_FALSE;
-
-        set_event(m_evStop);
-        DWORD dwRes = ::WaitForSingleObject(m_thread, WORKER_THREAD_FINISH_TIMEOUT);
-        if(dwRes == WAIT_TIMEOUT)
-        {
-            ::TerminateThread(m_thread, TERMINATED_THREAD_EXIT_CODE);
-            return S_FALSE;
-        }
-
-        m_thread.Close();
-        return S_OK;
-    }
-
-    ~named_pipe_server()
-    {
-
-    }
-
     bool IsValid() const
     {
-        return m_bValid;
+        return m_fValid;
     }
 
-private:
-
-    static unsigned __stdcall thread_proc(void* _pThis)
-    {
-        named_pipe_server* pThis = reinterpret_cast<named_pipe_server*>(_pThis);
-        _ATLTRY
-        {
-            pThis->thread_proc();
-            return S_OK;
-        }
-        _ATLCATCH(e)
-        {
-            return e.m_hr;
-        }
-    };
-
-    void thread_proc()
+    void ThreadProc()
     {
         ATLASSERT(IsValid());
         using namespace hres_routines;
@@ -207,6 +156,8 @@ private:
 
         disconnect_pipes();
     }
+
+private:
 
     void connect_pipes()
     {
@@ -302,7 +253,7 @@ private:
         {
             using namespace hres_routines;
 
-            HRESULT hRes;
+            HRESULT hRes = S_FALSE;
 
             if(m_fPendingIO)
             {
@@ -317,7 +268,12 @@ private:
                     }
                 }
             }
-            hRes = m_pipeInstance.DisconnectNamedPipe();
+
+			if (m_eState != INSTANCE_STATE_CONNECTING && hRes == S_OK)
+			{
+				hRes = m_pipeInstance.DisconnectNamedPipe();
+			}
+
             return hRes;
         }
 
@@ -361,24 +317,32 @@ private:
                     while(true)
                     {
                         HRESULT hRes;
-                        DWORD dwBytesTransfered, dwBytesLeftInThisMessage;
+                        DWORD dwBytesTransfered, dwBytesLeftInThisMsg;
 
-                        hRes = m_pipeInstance.PeekNamedPipe(dwBytesLeftInThisMessage);
+                        hRes = m_pipeInstance.PeekNamedPipe(dwBytesLeftInThisMsg);
                         if(SUCCEEDED(hRes))
                         {
-                            // TODO: validate message size
-                            Buffer& buffer = m_inputBuffer.AddBuffer(dwBytesLeftInThisMessage > 0 ? dwBytesLeftInThisMessage : BUFSIZE);
+							size_t nMsgLength = m_inputBuffer.GetCount() + dwBytesLeftInThisMsg;
+							bool fMsgTooLong = nMsgLength >= MAX_INPUT_MESSAGE_SIZE;
+							Buffer& buffer = prepare_input_buffer(fMsgTooLong, dwBytesLeftInThisMsg);
                             hRes = m_pipeInstance.ReadToArray(buffer, &m_oOverlap);
                             if(read_succeeded(hRes))
                             {
                                 hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
                                 if(read_succeeded(hRes))
                                 {
-                                    m_inputBuffer.TrimLastChunk(dwBytesTransfered);
-                                    if(!more_data(hRes))
-                                    {
-                                        message_completed();
-                                    }
+									if (fMsgTooLong)
+									{ // just ignore this message silently
+										m_inputBuffer.Clear();
+									}
+									else
+									{
+										m_inputBuffer.TrimLastChunk(dwBytesTransfered);
+										if (!more_data(hRes))
+										{
+											message_completed();
+										}
+									}
                                 }
                                 else
                                 {
@@ -427,18 +391,30 @@ private:
             m_notifier.OnMessage(m_instanceNo, buffer);
             m_inputBuffer.Clear();
         }
+
+	private:
+
+		Buffer& prepare_input_buffer(bool fMsgTooLong, DWORD dwBytesLeftInThisMsg)
+		{
+			if (fMsgTooLong)
+			{
+				return m_inputBuffer.GetLastChunk(BUFSIZE);
+			}
+			else
+			{
+				return m_inputBuffer.AddBuffer(dwBytesLeftInThisMsg > 0 ? dwBytesLeftInThisMsg : BUFSIZE);
+			}
+		}
     };
 
 private:
 
-    bool m_bValid;
+    bool m_fValid;
     CString m_sFullPipeName;
     INSTANCENO m_instanceCnt;
-    CHandle m_evStop;
     CHandle m_evWrite;
     HANDLE m_aWaitObjects[INSTANCES + 2];
     CAutoPtrArray<CPipeInstance> m_aInstance;
-    CHandle m_thread;
     INotify& m_notifier;
 
 protected:
@@ -477,40 +453,6 @@ protected:
         if(FAILED(hRes))
         {
             AtlThrow(hRes);
-        }
-    }
-
-    static void create_event(CHandle& ev)
-    {
-        HANDLE hEvent = ::CreateEvent(
-            nullptr,    // default security attribute 
-            true,    // manual-reset event 
-            false,    // initial state = nonsignaled 
-            nullptr);   // unnamed event object 
-
-        if(hEvent == nullptr)
-        {
-            AtlThrowLastWin32();
-        }
-
-        ev.Attach(hEvent);
-    }
-
-    static void set_event(CHandle& ev)
-    {
-        BOOL fResult = ::SetEvent(ev);
-        if(!fResult)
-        {
-            AtlThrowLastWin32();
-        }
-    }
-
-    static void resume_thread(HANDLE hThread)
-    {
-        DWORD dwRes = ::ResumeThread(hThread);
-        if(dwRes == ((DWORD)-1))
-        {
-            AtlThrowLastWin32();
         }
     }
 };

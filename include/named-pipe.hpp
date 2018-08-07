@@ -205,6 +205,26 @@ public:
 
         return S_OK;
     }
+
+	template<typename T>
+	HRESULT WriteArray(
+		CAtlArray<T>& buffer,
+		LPOVERLAPPED pOverlapped)
+	{
+		ATLASSUME(m_h != NULL);
+
+		BOOL fResult = ::WriteFile(m_h,
+			reinterpret_cast<LPVOID>(buffer.GetData()),
+			static_cast<DWORD>(buffer.GetCount() * sizeof(T)),
+			nullptr,
+			pOverlapped);
+		if (!fResult)
+		{
+			return AtlHresultFromLastError();
+		}
+
+		return S_OK;
+	}
 };
 
 #endif // _NAMED_PIPE_HPP_
