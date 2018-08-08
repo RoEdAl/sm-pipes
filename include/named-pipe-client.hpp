@@ -10,9 +10,10 @@
 #include "hres-routines.hpp"
 #include "critical-section.hpp"
 #include "chunked-buffer.hpp"
+#include "pipe-client-basics.hpp"
 
 template<size_t BUFSIZE>
-class named_pipe_client :public worker_thread<named_pipe_client<BUFSIZE>>
+class named_pipe_client :public pipe_client_basics, public worker_thread<named_pipe_client<BUFSIZE>>
 {
 private:
 
@@ -36,6 +37,8 @@ private:
 	bool m_fPendingRead;
 	bool m_fPendingWrite;
 
+	INotify& m_notifier;
+
 	enum GET_OUT_BUFFER_RESULT
 	{
 		BUFFER_RETURNED,
@@ -45,12 +48,8 @@ private:
 
 public:
 
-	static const size_t MAX_INPUT_MESSAGE_SIZE = 1024 * 1024 * 1024;
-	static const DWORD CONNECT_TIMEOUT = 1000;
-	static const DWORD WRITE_RETRY_TIMEOUT = 50;
-
-	named_pipe_client(const CString& sPipe)
-		:m_sPipe(sPipe), m_fPendingRead(false), m_fPendingWrite(false)
+	named_pipe_client(const CString& sPipe, INotify& notifier)
+		:m_sPipe(sPipe), m_fPendingRead(false), m_fPendingWrite(false), m_notifier(notifier)
 	{
 		create_event(m_evRead);
 		create_event(m_evWrite, false);
@@ -75,6 +74,11 @@ public:
 			m_outputBuffers.AddTail(msg);
 		}
 		set_event(m_evNewMsg);
+	}
+
+	const CString& GetPipeName() const
+	{
+		return m_sPipe;
 	}
 
 	void ThreadProc()
@@ -175,7 +179,7 @@ private:
 		if (m_pipe.m_h != nullptr)
 		{
 			HANDLE ahWait[2];
-			DWORD dwCnt = 0, dwBytesTransferred, dwWait;
+			DWORD dwCnt = 0, dwBytesTransferred;
 			HRESULT hRes;
 
 			if (m_fPendingRead)
@@ -192,8 +196,11 @@ private:
 				ATLASSERT(SUCCEEDED(hRes));
 			}
 
-			dwWait = ::WaitForMultipleObjects(dwCnt, ahWait, true, INFINITE);
-			ATLASSERT(dwWait >= WAIT_OBJECT_0 && dwWait < (WAIT_OBJECT_0 + dwCnt));
+			if (dwCnt > 0)
+			{
+				DWORD dwWait = ::WaitForMultipleObjects(dwCnt, ahWait, true, INFINITE);
+				ATLASSERT(dwWait >= WAIT_OBJECT_0 && dwWait < (WAIT_OBJECT_0 + dwCnt));
+			}
 
 			if (m_fPendingRead)
 			{
@@ -214,6 +221,7 @@ private:
 			}
 
 			m_pipe.Close();
+			m_notifier.OnDisconnect();
 		}
 
 		reset_event(m_evRead);
@@ -249,6 +257,7 @@ private:
 			}
 		}
 
+		m_notifier.OnConnect();
 		m_fPendingRead = false;
 		set_event(m_evRead);
 	}
@@ -400,7 +409,7 @@ private:
 	{
 		Buffer buffer;
 		m_inputBuffer.GetData(buffer);
-		// TODO: Notify
+		m_notifier.OnMessage(buffer);
 		m_inputBuffer.Clear();
 	}
 };

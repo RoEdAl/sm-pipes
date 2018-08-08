@@ -36,4 +36,4 @@ public:
     };
 };
 
-#endif
+#endif // _PIPE_SERVER_BASICS_HPP_
