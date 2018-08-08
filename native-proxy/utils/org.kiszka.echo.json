@@ -1,0 +1,9 @@
+{
+  "name": "org.kiszka.echo",
+  "description": "Kiszka Native Messaging API Example Host",
+  "path": "SMNativeProxy.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://cipigfjhcbaiobfcabgogdkhilgocgal/"
+  ]
+}
