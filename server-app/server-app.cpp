@@ -11,6 +11,15 @@
 
 #include <atl-headers.h>
 
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/reader.h>
+#include <rapidjson/error/en.h>
+#include <rapidjson/filereadstream.h>
+#include <rapidjson/filewritestream.h>
+
+using namespace rapidjson;
+
 namespace
 {
 #include <named-pipe-server.hpp>
@@ -37,7 +46,30 @@ namespace
             _tprintf(_T("msg(%I64i): message size=%I64i\n"), instanceNo, buffer.GetCount());
 			if (m_pServer != nullptr)
 			{
-				m_pServer->SendMessage(instanceNo, buffer);
+				Document msg;
+				ParseResult res = msg.Parse(reinterpret_cast<const char*>(buffer.GetData()), buffer.GetCount());
+				if (res)
+				{
+					Document reply;
+					reply.SetObject();
+					Document::AllocatorType& alloc = msg.GetAllocator();
+					reply.AddMember("echo", msg, alloc);
+
+					StringBuffer strm;
+					Writer<StringBuffer> writer(strm);
+					reply.Accept(writer);
+
+					pipe_server_basics::Buffer buf_reply;
+					buf_reply.SetCount(strm.GetSize());
+					Checked::memcpy_s(buf_reply.GetData(), buf_reply.GetCount(), strm.GetString(), strm.GetSize());
+
+					m_pServer->SendMessage(instanceNo, buf_reply);
+				}
+				else
+				{
+					_tprintf(_T("msg(%I64i): could not parse message\n"), instanceNo);
+					m_pServer->SendMessage(instanceNo, buffer);
+				}
 			}
         }
 
