@@ -27,7 +27,7 @@ public:
 
 	worker_thread()
 	{
-		create_event(m_evStop);
+		create_event(m_evStop, false);
 	}
 
 	~worker_thread()
@@ -84,11 +84,11 @@ private:
 
 protected:
 
-	static void create_event(CHandle& ev)
+	static void create_event(CHandle& ev, bool fManual = true)
 	{
 		HANDLE hEvent = ::CreateEvent(
 			nullptr,    // default security attribute 
-			true,    // manual-reset event 
+			fManual,    // manual-reset event 
 			false,    // initial state = nonsignaled 
 			nullptr);   // unnamed event object 
 

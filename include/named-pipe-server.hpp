@@ -97,8 +97,9 @@ public:
 
     void ThreadProc()
     {
+		using namespace hres_routines;
+
         ATLASSERT(IsValid());
-        using namespace hres_routines;
 
         connect_pipes();
 
@@ -251,7 +252,7 @@ private:
 
         HRESULT FinishCancelingAndDisconnect()
         {
-            using namespace hres_routines;
+			using namespace hres_routines;
 
             HRESULT hRes = S_FALSE;
 
@@ -279,7 +280,7 @@ private:
 
         void Run()
         {
-            using namespace hres_routines;
+			using namespace hres_routines;
 
             if(m_fPendingIO)
             {
@@ -309,64 +310,12 @@ private:
                 }
             }
 
-            // read/write (again)
             switch(m_eState)
             {
                 case INSTANCE_STATE_READING:
-                {
-                    while(true)
-                    {
-                        HRESULT hRes;
-                        DWORD dwBytesTransfered, dwBytesLeftInThisMsg;
-
-                        hRes = m_pipeInstance.PeekNamedPipe(dwBytesLeftInThisMsg);
-                        if(SUCCEEDED(hRes))
-                        {
-							size_t nMsgLength = m_inputBuffer.GetCount() + dwBytesLeftInThisMsg;
-							bool fMsgTooLong = nMsgLength >= MAX_INPUT_MESSAGE_SIZE;
-							Buffer& buffer = prepare_input_buffer(fMsgTooLong, dwBytesLeftInThisMsg);
-                            hRes = m_pipeInstance.ReadToArray(buffer, &m_oOverlap);
-                            if(read_succeeded(hRes))
-                            {
-                                hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
-                                if(read_succeeded(hRes))
-                                {
-									if (fMsgTooLong)
-									{ // just ignore this message silently
-										m_inputBuffer.Clear();
-									}
-									else
-									{
-										m_inputBuffer.TrimLastChunk(dwBytesTransfered);
-										if (!more_data(hRes))
-										{
-											message_completed();
-										}
-									}
-                                }
-                                else
-                                {
-                                    AtlThrow(hRes);
-                                }
-                            }
-                            else if(win32_error<ERROR_IO_PENDING>(hRes))
-                            {
-                                m_fPendingIO = true;
-                                break;
-                            }
-                            else
-                            {
-                                AtlThrow(hRes);
-                            }
-                        }
-                        else
-                        {
-                            AtlThrow(hRes);
-                        }
-                    }
-
-                    break;
-                }
+					sync_or_async_read();
+					break;
+                
             }
         }
 
@@ -382,16 +331,6 @@ private:
         bool m_fPendingIO;
         INotify& m_notifier;
 
-    protected:
-
-        void message_completed()
-        {
-            Buffer buffer;
-            m_inputBuffer.GetData(buffer);
-            m_notifier.OnMessage(m_instanceNo, buffer);
-            m_inputBuffer.Clear();
-        }
-
 	private:
 
 		Buffer& prepare_input_buffer(bool fMsgTooLong, DWORD dwBytesLeftInThisMsg)
@@ -404,6 +343,69 @@ private:
 			{
 				return m_inputBuffer.AddBuffer(dwBytesLeftInThisMsg > 0 ? dwBytesLeftInThisMsg : BUFSIZE);
 			}
+		}
+
+		void sync_or_async_read()
+		{
+			using namespace hres_routines;
+
+			while (true)
+			{
+				DWORD dwBytesTransfered, dwBytesLeftInThisMsg;
+
+				HRESULT hRes = m_pipeInstance.PeekNamedPipe(dwBytesLeftInThisMsg);
+				if (SUCCEEDED(hRes))
+				{
+					size_t nMsgLength = m_inputBuffer.GetCount() + dwBytesLeftInThisMsg;
+					bool fMsgTooLong = nMsgLength >= MAX_INPUT_MESSAGE_SIZE;
+					Buffer& buffer = prepare_input_buffer(fMsgTooLong, dwBytesLeftInThisMsg);
+					hRes = m_pipeInstance.ReadToArray(buffer, &m_oOverlap);
+					if (read_succeeded(hRes))
+					{
+						hRes = m_pipeInstance.GetOverlappedResult(&m_oOverlap, dwBytesTransfered, true);
+						if (read_succeeded(hRes))
+						{
+							if (fMsgTooLong)
+							{ // just ignore this message silently
+								m_inputBuffer.Clear();
+							}
+							else
+							{
+								m_inputBuffer.TrimLastChunk(dwBytesTransfered);
+								if (!more_data(hRes))
+								{
+									message_completed();
+								}
+							}
+						}
+						else
+						{
+							AtlThrow(hRes);
+						}
+					}
+					else if (win32_error<ERROR_IO_PENDING>(hRes))
+					{
+						m_fPendingIO = true;
+						break;
+					}
+					else
+					{
+						AtlThrow(hRes);
+					}
+				}
+				else
+				{
+					AtlThrow(hRes);
+				}
+			}
+		}
+
+		void message_completed()
+		{
+			Buffer buffer;
+			m_inputBuffer.GetData(buffer);
+			m_notifier.OnMessage(m_instanceNo, buffer);
+			m_inputBuffer.Clear();
 		}
     };
 

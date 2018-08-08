@@ -27,6 +27,7 @@ private:
 
 	CCriticalSection m_cs; // access to m_outputBuffers
 	CAtlList<CMemoryBlock> m_outputBuffers;
+	CMemoryBlock m_currentMemoryBlock;
 
 	CChunkedBuffer m_inputBuffer;
 
@@ -42,24 +43,6 @@ private:
 		CANNOT_LOCK_BUFFER_LIST
 	};
 
-private:
-
-	GET_OUT_BUFFER_RESULT get_out_buffer(CMemoryBlock& memory_block)
-	{
-		CCriticalSectionSoftLocker locker(m_cs);
-		if (!locker.IsLocked()) return CANNOT_LOCK_BUFFER_LIST;
-
-		size_t nCount = m_outputBuffers.GetCount();
-		if (nCount == 0)
-		{
-			return NO_MORE_BUFFERS;
-		}
-
-		memory_block = const_cast<const CAtlList<CMemoryBlock>&>(m_outputBuffers).GetHead();
-		m_outputBuffers.RemoveHeadNoReturn();
-		return BUFFER_RETURNED;
-	}
-
 public:
 
 	static const size_t MAX_INPUT_MESSAGE_SIZE = 1024 * 1024 * 1024;
@@ -70,8 +53,8 @@ public:
 		:m_sPipe(sPipe), m_fPendingRead(false), m_fPendingWrite(false)
 	{
 		create_event(m_evRead);
-		create_event(m_evWrite);
-		create_event(m_evNewMsg);
+		create_event(m_evWrite, false);
+		create_event(m_evNewMsg, false);
 
 		ZeroMemory(&m_ovRead, sizeof(OVERLAPPED));
 		m_ovRead.hEvent = m_evRead;
@@ -96,8 +79,6 @@ public:
 
 	void ThreadProc()
 	{
-		using namespace hres_routines;
-
 		bool fStop = false;
 		while (!fStop)
 		{
@@ -106,7 +87,7 @@ public:
 				open_pipe();
 				set_message_mode();
 				main_loop();
-				return;
+				fStop = true;
 			}
 			_ATLCATCH(e)
 			{
@@ -132,6 +113,8 @@ private:
 
 	void main_loop()
 	{
+		using namespace hres_routines;
+
 		bool fStop = false;
 		DWORD dwTimeout = INFINITE;
 		while (!fStop)
@@ -159,56 +142,7 @@ private:
 					}
 				}
 
-				// read more
-				while (true)
-				{
-					DWORD dwBytesTransferred, dwBytesLeftInThisMsg;
-
-					HRESULT hRes = m_pipe.PeekNamedPipe(dwBytesLeftInThisMsg);
-					if (SUCCEEDED(hRes))
-					{
-						size_t nMsgLength = m_inputBuffer.GetCount() + dwBytesLeftInThisMsg;
-						bool fMsgTooLong = nMsgLength >= MAX_INPUT_MESSAGE_SIZE;
-						Buffer& buffer = prepare_input_buffer(fMsgTooLong, dwBytesLeftInThisMsg);
-						hRes = m_pipe.ReadToArray(buffer, &m_ovRead);
-						if (read_succeeded(hRes))
-						{
-							hRes = m_pipe.GetOverlappedResult(&m_ovRead, dwBytesTransferred, true);
-							if (read_succeeded(hRes))
-							{
-								if (fMsgTooLong)
-								{ // just ignore this message silently
-									m_inputBuffer.Clear();
-								}
-								else
-								{
-									m_inputBuffer.TrimLastChunk(dwBytesTransferred);
-									if (!more_data(hRes))
-									{
-										message_completed();
-									}
-								}
-							}
-							else
-							{
-								AtlThrow(hRes);
-							}
-						}
-						else if (win32_error<ERROR_IO_PENDING>(hRes))
-						{
-							m_fPendingRead = true;
-							break;
-						}
-						else
-						{
-							AtlThrow(hRes);
-						}
-					}
-					else
-					{
-						AtlThrow(hRes);
-					}
-				}
+				sync_or_async_read();
 			}
 			break;
 
@@ -217,65 +151,12 @@ private:
 				DWORD dwBytesTransferred;
 				m_fPendingWrite = false;
 				HRESULT hRes = m_pipe.GetOverlappedResult(&m_ovWrite, dwBytesTransferred, true);
-				reset_event(m_evWrite);
 			}
 
 			case WAIT_OBJECT_0 + 2: // evNewMsg
-			case WAIT_TIMEOUT:
-			{
-				if (dwWait == (WAIT_OBJECT_0 + 2))
-				{
-					reset_event(m_evNewMsg);
-				}
-
-				bool fWrite = true;
-				while (fWrite)
-				{
-					CMemoryBlock memory_block;
-					GET_OUT_BUFFER_RESULT eRes = get_out_buffer(memory_block);
-					switch (eRes)
-					{
-					case BUFFER_RETURNED:
-					{
-						HRESULT hRes = m_pipe.Write(memory_block.GetData(), static_cast<DWORD>(memory_block.GetSize()), &m_ovWrite);
-						if (SUCCEEDED(hRes))
-						{
-							DWORD dwBytesTransferred;
-							hRes = m_pipe.GetOverlappedResult(&m_ovWrite, dwBytesTransferred, true);
-							if (SUCCEEDED(hRes))
-							{
-								m_fPendingWrite = false;
-								reset_event(m_evWrite);
-							}
-							else
-							{
-								AtlThrow(hRes);
-							}
-						}
-						else if (win32_error<ERROR_IO_PENDING>(hRes))
-						{
-							m_fPendingWrite = true;
-							fWrite = false;
-						}
-						else
-						{
-							AtlThrow(hRes);
-						}
-					}
-					break;
-
-					case CANNOT_LOCK_BUFFER_LIST:
-						dwTimeout = WRITE_RETRY_TIMEOUT;
-						fWrite = false;
-						break;
-
-					default:
-						fWrite = false;
-						break;
-					}
-				}
+			case WAIT_TIMEOUT: // try again
+				sync_or_async_write(dwTimeout);
 				break;
-			}
 
 			case 3: // evStop
 				fStop = true;
@@ -289,6 +170,8 @@ private:
 
 	void reset()
 	{
+		using namespace hres_routines;
+
 		if (m_pipe.m_h != nullptr)
 		{
 			HANDLE ahWait[2];
@@ -332,18 +215,12 @@ private:
 
 			m_pipe.Close();
 		}
-		else
-		{
-			m_fPendingRead = false;
-			m_fPendingWrite = false;
-		}
 
 		reset_event(m_evRead);
-		reset_event(m_evWrite);
-		reset_event(m_evNewMsg);
 
 		m_inputBuffer.Clear();
 		m_outputBuffers.RemoveAll();
+		m_currentMemoryBlock.Empty();
 	}
 
 	void open_pipe()
@@ -394,6 +271,128 @@ private:
 		else
 		{
 			return m_inputBuffer.AddBuffer(dwBytesLeftInThisMsg > 0 ? dwBytesLeftInThisMsg : BUFSIZE);
+		}
+	}
+
+	GET_OUT_BUFFER_RESULT get_out_buffer()
+	{
+		CCriticalSectionSoftLocker locker(m_cs);
+		if (!locker.IsLocked()) return CANNOT_LOCK_BUFFER_LIST;
+
+		size_t nCount = m_outputBuffers.GetCount();
+		if (nCount == 0)
+		{
+			m_currentMemoryBlock.Empty();
+			return NO_MORE_BUFFERS;
+		}
+
+		m_currentMemoryBlock = const_cast<const CAtlList<CMemoryBlock>&>(m_outputBuffers).GetHead();
+		m_outputBuffers.RemoveHeadNoReturn();
+		return BUFFER_RETURNED;
+	}
+
+	void sync_or_async_read()
+	{
+		using namespace hres_routines;
+
+		while (true)
+		{
+			DWORD dwBytesTransferred, dwBytesLeftInThisMsg;
+
+			HRESULT hRes = m_pipe.PeekNamedPipe(dwBytesLeftInThisMsg);
+			if (SUCCEEDED(hRes))
+			{
+				size_t nMsgLength = m_inputBuffer.GetCount() + dwBytesLeftInThisMsg;
+				bool fMsgTooLong = nMsgLength >= MAX_INPUT_MESSAGE_SIZE;
+				Buffer& buffer = prepare_input_buffer(fMsgTooLong, dwBytesLeftInThisMsg);
+				hRes = m_pipe.ReadToArray(buffer, &m_ovRead);
+				if (read_succeeded(hRes))
+				{
+					hRes = m_pipe.GetOverlappedResult(&m_ovRead, dwBytesTransferred, true);
+					if (read_succeeded(hRes))
+					{
+						if (fMsgTooLong)
+						{ // just ignore this message silently
+							m_inputBuffer.Clear();
+						}
+						else
+						{
+							m_inputBuffer.TrimLastChunk(dwBytesTransferred);
+							if (!more_data(hRes))
+							{
+								message_completed();
+							}
+						}
+					}
+					else
+					{
+						AtlThrow(hRes);
+					}
+				}
+				else if (win32_error<ERROR_IO_PENDING>(hRes))
+				{
+					m_fPendingRead = true;
+					break;
+				}
+				else
+				{
+					AtlThrow(hRes);
+				}
+			}
+			else
+			{
+				AtlThrow(hRes);
+			}
+		}
+	}
+
+	void sync_or_async_write(DWORD& dwTimeout)
+	{
+		using namespace hres_routines;
+
+		bool fWrite = true;
+		while (fWrite)
+		{
+			GET_OUT_BUFFER_RESULT eRes = get_out_buffer();
+			switch (eRes)
+			{
+			case BUFFER_RETURNED:
+			{
+				HRESULT hRes = m_pipe.Write(m_currentMemoryBlock.GetData(), static_cast<DWORD>(m_currentMemoryBlock.GetSize()), &m_ovWrite);
+				if (SUCCEEDED(hRes))
+				{
+					DWORD dwBytesTransferred;
+					hRes = m_pipe.GetOverlappedResult(&m_ovWrite, dwBytesTransferred, true);
+					if (SUCCEEDED(hRes))
+					{
+						m_fPendingWrite = false;
+					}
+					else
+					{
+						AtlThrow(hRes);
+					}
+				}
+				else if (win32_error<ERROR_IO_PENDING>(hRes))
+				{
+					m_fPendingWrite = true;
+					fWrite = false;
+				}
+				else
+				{
+					AtlThrow(hRes);
+				}
+			}
+			break;
+
+			case CANNOT_LOCK_BUFFER_LIST:
+				dwTimeout = WRITE_RETRY_TIMEOUT;
+				fWrite = false;
+				break;
+
+			default:
+				fWrite = false;
+				break;
+			}
 		}
 	}
 

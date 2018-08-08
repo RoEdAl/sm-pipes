@@ -64,6 +64,16 @@ public:
 		return *this;
 	}
 
+	void Empty()
+	{
+		if (m_pBlock != nullptr)
+		{
+			free(m_pBlock);
+			m_pBlock = nullptr;
+		}
+		m_nSize = 0;
+	}
+
 	bool IsEmpty() const
 	{
 		return m_nSize == 0;

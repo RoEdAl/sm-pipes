@@ -24,8 +24,6 @@ namespace
 #endif
 }
 
-using namespace hres_routines;
-
 int main()
 {
 #ifdef USE_LOGON_SESSION
