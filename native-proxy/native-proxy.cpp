@@ -23,29 +23,55 @@ namespace
 
 	constexpr size_t BUFSIZE = 479;
 
+	const char JSON_CONNECTED[] = "{\"ntrnl\":\"connected\"}";
+	const char JSON_DISCONNECTED[] = "{\"ntrnl\":\"disconnected\"}";
+
+	void push_size(size_t size)
+	{
+		UINT32 nSize = static_cast<UINT32>(size);
+		fwrite(&nSize, sizeof(nSize), 1, stdout);
+	}
+
+	template<size_t S>
+	void push_size_tmpl()
+	{
+		UINT32 nSize = S;
+		fwrite(&nSize, sizeof(nSize), 1, stdout);
+	}
+
+	template<size_t S>
+	void push_static_msg(const char (&str)[S])
+	{
+		push_size_tmpl<S>();
+		fwrite(str, S, 1, stdout);
+		fflush(stdout);
+	}
+
 	class ClientMessages :public pipe_client_basics::INotify
 	{
 	public:
 		virtual void OnConnect()
 		{
+			push_static_msg(JSON_CONNECTED);
 			_ftprintf(stderr, _T("native-proxy: connect\n"));
 		}
 
 		virtual void OnMessage(const pipe_client_basics::Buffer& buffer)
 		{
-			_ftprintf(stderr, _T("native-proxy: msg - size=%I64i\n"), buffer.GetCount());
-
 			if (buffer.GetCount() > 0)
 			{
-				UINT32 nSize = static_cast<UINT32>(buffer.GetCount());
-				fwrite(&nSize, sizeof(nSize), 1, stdout);
+				size_t nSize = buffer.GetCount();
+				push_size(nSize);
 				fwrite(buffer.GetData(), nSize, 1, stdout);
 				fflush(stdout);
 			}
+
+			_ftprintf(stderr, _T("native-proxy: msg - size=%I64i\n"), buffer.GetCount());
 		}
 
 		virtual void OnDisconnect()
 		{
+			push_static_msg(JSON_DISCONNECTED);
 			_ftprintf(stderr, _T("native-proxy: disconnect\n"));
 		}
 	};
@@ -176,4 +202,3 @@ int _tmain(int argc, TCHAR* argv[])
 	_ftprintf(stderr, _T("native-proxy: bye - %08x\n"), hRes);
     return hRes;
 }
-
