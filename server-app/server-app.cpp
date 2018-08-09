@@ -18,6 +18,8 @@
 #include <rapidjson/filereadstream.h>
 #include <rapidjson/filewritestream.h>
 
+#include <sm-srv.h>
+
 using namespace rapidjson;
 
 namespace
