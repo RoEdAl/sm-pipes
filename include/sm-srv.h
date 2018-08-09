@@ -48,7 +48,7 @@ extern "C" {
     return value:
     
     Return value is send back to the caller.
-    Use one of `SM_SRV_RPLY_...` values.
+    Use one of `SM_SRV_RPLY_...` defined values.
 
     - Zero and all positive values indicates success.
     - Negative values indicates failure.
@@ -64,12 +64,12 @@ extern "C" {
 typedef int (__stdcall *SM_SRV_HANDLER)(int cmd, void* val);
 
 /*
-    SMSrvApiLevel - return highest supported API level.
+    SMSrvApiLevel - returns highest supported API level.
     
     return value:
 
     Highest supported API level.
-	`SM_SRV_API_LEVEL_...`
+	One of `SM_SRV_API_LEVEL_...` value.
 */
 int __stdcall SMSrvApiLevel(void);
 
