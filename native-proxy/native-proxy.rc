@@ -1,0 +1,99 @@
+/*
+	native-proxy.rc
+*/
+
+#include <windows.h>
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+
+#include <SMPipesConfig.h>
+#include "resource.h"
+
+/*
+	Icon
+
+	Icon with lowest ID value placed first to ensure application icon
+	remains consistent on all systems.
+*/
+//0                       ICON                    "../gui/icons/cd_mka.ico"
+
+IDR_JSON_MANIFEST         JSON                    "native-proxy.json"
+
+STRINGTABLE
+BEGIN
+	IDS_APP_HOST_NAME L"org.kiszka.echo"
+	IDS_NATIVE_MESSAGING_HOSTS_PATH L"Software\\Google\\Chrome\\NativeMessagingHosts"
+END
+
+#if defined(SMPIPES_PLATFORM_32)
+STRINGTABLE
+BEGIN
+IDS_APP_HOST_NAME L"org.kiszka.echo"
+IDS_NATIVE_MESSAGING_HOSTS_PATH L"Software\\Google\\Chrome\\NativeMessagingHosts"
+IDS_REGISTER_GOOGLE_CHROME_INFO
+L"To register this application use as Chrome native messaging application use following switches:\n\n\
+	    --register-google-chrome-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-google-chrome-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-google-chrome-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-google-chrome-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-google-chrome-hklm    :register at HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-register-google-chrome-hkcu    :register at HKEY_CURRENT_USER 64bit\n\
+	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_CURRENT_USER 64bit\n\n\
+       See also: http://developer.chrome.com/extensions/nativeMessaging"
+	END
+#elif defined(SMPIPES_PLATFORM_64)
+STRINGTABLE
+BEGIN
+IDS_REGISTER_GOOGLE_CHROME_INFO
+L"To register this application use as Chrome native messaging application use following switches:\n\n\
+	    --register-google-chrome-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-google-chrome-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-google-chrome-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-google-chrome-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-google-chrome-hklm    :register at HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-register-google-chrome-hkcu    :register at HKEY_CURRENT_USER 32bit\n\
+	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_CURRENT_USER 32bit\n\n\
+       See also: http://developer.chrome.com/extensions/nativeMessaging"
+	END
+#else
+#error "Unknown architecture"
+#endif
+
+/*
+	Version
+*/
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION SMPIPES_VERSION_MAJOR, SMPIPES_VERSION_MINOR, SMPIPES_VERSION_PATCH, SMPIPES_VERSION_TWEAK
+ PRODUCTVERSION SMPIPES_VERSION_MAJOR, SMPIPES_VERSION_MINOR, SMPIPES_VERSION_PATCH, SMPIPES_VERSION_TWEAK
+ FILEFLAGSMASK 0x17L
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "Comments", "This is very long comment."
+            VALUE "CompanyName", "Who Knows - xxx@yyy.zz"
+            VALUE "FileDescription", "This is short description."
+            VALUE "FileVersion", SMPIPES_VERSION_STR4
+            VALUE "InternalName", "native-proxy"
+            VALUE "LegalCopyright", "Simplified BSD License - http://www.opensource.org/licenses/bsd-license.html"
+            VALUE "OriginalFilename", "SMNativeProxy.exe"
+            VALUE "ProductName", "SMNativeProxy.exe"
+            VALUE "ProductVersion", SMPIPES_VERSION_STR4
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END
+

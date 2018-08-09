@@ -14,5 +14,6 @@
 #include <atlstr.h>
 #include <atlfile.h>
 #include <atlcoll.h>
+#include <atlpath.h>
 
 #endif

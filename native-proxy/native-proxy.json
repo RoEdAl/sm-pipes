@@ -1,0 +1,9 @@
+{
+  "name": "$APPNAME$",
+  "description": "This is application description",
+  "path": "$APPBIN$",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://cipigfjhcbaiobfcabgogdkhilgocgal/"
+  ]
+}

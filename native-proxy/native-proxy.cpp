@@ -4,15 +4,11 @@
 
 #include <targetver.h>
 #include <SMPipesConfig.h>
+#include "resource.h"
 #include <atl-headers.h>
-
-#include <Windows.h>
 #include <fcntl.h>  
 #include <io.h>
-#include <stdio.h>
-#include <conio.h>
-#include <tchar.h>
-#include <atlcoll.h>
+#include "registry.h"
 
 namespace
 {
@@ -29,7 +25,7 @@ namespace
 
 	class ClientMessages :public pipe_client_basics::INotify
 	{
-	protected:
+	public:
 		virtual void OnConnect()
 		{
 			_ftprintf(stderr, _T("native-proxy: connect\n"));
@@ -46,38 +42,14 @@ namespace
 				fwrite(buffer.GetData(), nSize, 1, stdout);
 				fflush(stdout);
 			}
-
-			if (m_pClient != nullptr)
-			{
-				//m_pClient->SendMessage(buffer);
-			}
 		}
 
 		virtual void OnDisconnect()
 		{
 			_ftprintf(stderr, _T("native-proxy: disconnect\n"));
 		}
-
-	protected:
-
-		named_pipe_client<BUFSIZE>* m_pClient;
-
-	public:
-
-		ClientMessages()
-			:m_pClient(nullptr)
-		{}
-
-		void SetClient(named_pipe_client<BUFSIZE>& client)
-		{
-			m_pClient = &client;
-		}
 	};
-}
 
-
-namespace
-{
 	bool set_binary_mode()
 	{
 		bool bRes = true;
@@ -97,58 +69,61 @@ namespace
 
 		return bRes;
 	}
-
-	bool fBreak = false;
-
-	BOOL WINAPI ctrl_handler(DWORD fdwCtrlType)
-	{
-		switch (fdwCtrlType)
-		{
-			// Handle the CTRL-C signal. 
-		case CTRL_C_EVENT:
-			_ftprintf(stderr, _T("Ctrl-C event\n\n"));
-			fBreak = true;
-			return(true);
-
-			// CTRL-CLOSE: confirm that the user wants to exit. 
-		case CTRL_CLOSE_EVENT:
-			_ftprintf(stderr, _T("Ctrl-Close event\n\n"));
-			return(true);
-
-			// Pass other signals to the next handler. 
-		case CTRL_BREAK_EVENT:
-			_ftprintf(stderr, _T("Ctrl-Break event\n\n"));
-			fBreak = true;
-			return (false);
-
-		case CTRL_LOGOFF_EVENT:
-			_ftprintf(stderr, _T("Ctrl-Logoff event\n\n"));
-			return (false);
-
-		case CTRL_SHUTDOWN_EVENT:
-			_ftprintf(stderr, _T("Ctrl-Shutdown event\n\n"));
-			return (false);
-
-		default:
-			return (false);
-		}
-	}
 }
 
 int _tmain(int argc, TCHAR* argv[])
 {
+	if (argc == 2)
+	{ // registration
+		if (!_tcscmp(argv[1], _T("--register-google-chrome-hklm")))
+		{
+			return register_chrome_native_msg_host(true, false, argv[0]);
+		}
+		else if (!_tcscmp(argv[1], _T("--register-google-chrome-hkcu")))
+		{
+			return register_chrome_native_msg_host(false, false, argv[0]);
+		}
+		else if (!_tcscmp(argv[1], _T("--unregister-google-chrome-hklm")))
+		{
+			return unregister_chrome_native_msg_host(true, false);
+		}
+		else if (!_tcscmp(argv[1], _T("--unregister-google-chrome-hkcu")))
+		{
+			return unregister_chrome_native_msg_host(false, false);
+		}
+		if (!_tcscmp(argv[1], _T("--alt-register-google-chrome-hklm")))
+		{
+			return register_chrome_native_msg_host(true, true, argv[0]);
+		}
+		else if (!_tcscmp(argv[1], _T("--alt-register-google-chrome-hkcu")))
+		{
+			return register_chrome_native_msg_host(false, true, argv[0]);
+		}
+		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-chrome-hklm")))
+		{
+			return unregister_chrome_native_msg_host(true, true);
+		}
+		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-chrome-hkcu")))
+		{
+			return unregister_chrome_native_msg_host(false, true);
+		}
+		else if (!_tcscmp(argv[1], _T("--register")) || !_tcscmp(argv[1], _T("--register-info")))
+		{
+			CString sDesc;
+			ATLVERIFY(sDesc.LoadString(IDS_REGISTER_GOOGLE_CHROME_INFO));
+			_fputts(sDesc, stdout);
+			_fputtc(_T('\n'), stdout);
+			return 0;
+		}
+	}
+
 	if (!set_binary_mode())
 	{
 		return 1;
 	}
 
-	if (!::SetConsoleCtrlHandler(ctrl_handler, true))
-	{
-		_ftprintf(stderr, _T("native-proxy: Could not set control handler\n"));
-		return 2;
-	}
-
 	_ftprintf(stderr, _T("native-proxy: version=%s\n"), _T(SMPIPES_VERSION_STR));
+
 #ifdef USE_LOGON_SESSION
 	default_security_policy security_policy;
 	if (!security_policy.Init()) return 1;
@@ -159,19 +134,19 @@ int _tmain(int argc, TCHAR* argv[])
 
 	ClientMessages messages;
 	named_pipe_client<BUFSIZE> client(sPipeName, messages);
-	messages.SetClient(client);
+
 	_ftprintf(stderr, _T("native-proxy: pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 
 	client.Run();
 
+	bool fBreak = false;
 	UINT32 nSize, nCurrentSize = 0;
-	CAtlArray<char> fs_buffer;
 	CAtlArray<BYTE> buffer;
 
-	fs_buffer.SetCount(32 * 1024);
-
+	_ftprintf(stderr, _T("native-proxy: main loop\n"));
 	while (!fBreak)
 	{
+		// read size
 		if (!fread(&nSize, sizeof(nSize), 1, stdin))
 		{
 			if (!feof(stdin))
@@ -182,6 +157,7 @@ int _tmain(int argc, TCHAR* argv[])
 			continue;
 		}
 
+		// read message
 		buffer.SetCount(nSize);
 		if (!fread(reinterpret_cast<char*>(buffer.GetData()), nSize, 1, stdin))
 		{
@@ -190,12 +166,14 @@ int _tmain(int argc, TCHAR* argv[])
 			continue;
 		}
 
+		// just send received message
 		client.SendMessage(buffer);
 	}
 
 	_ftprintf(stderr, _T("native-proxy: stop\n"));
-	client.Stop();
-	_ftprintf(stderr, _T("native-proxy: bye\n"));
-    return 0;
+	HRESULT hRes = client.Stop();
+
+	_ftprintf(stderr, _T("native-proxy: bye - %08x\n"), hRes);
+    return hRes;
 }
 
