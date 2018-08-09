@@ -80,5 +80,6 @@ ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
 
 # subdirectories
 ADD_SUBDIRECTORY(server-app)
+ADD_SUBDIRECTORY(server-mbdd)
 ADD_SUBDIRECTORY(client-app)
 ADD_SUBDIRECTORY(native-proxy)
