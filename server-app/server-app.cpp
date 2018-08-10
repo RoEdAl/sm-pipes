@@ -10,15 +10,7 @@
 #include <tchar.h>
 
 #include <atl-headers.h>
-
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-#include <rapidjson/reader.h>
-#include <rapidjson/error/en.h>
-#include <rapidjson/filereadstream.h>
-#include <rapidjson/filewritestream.h>
-
-#include <sm-srv.h>
+#include <rapidjson-headers.hpp>
 
 using namespace rapidjson;
 

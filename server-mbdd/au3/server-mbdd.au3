@@ -9,14 +9,14 @@
 #include <WindowsConstants.au3>
 #include <GuiListView.au3>
 
-Dim Const $APP_TITLE = "SMSrvMbdd Host"
+Dim Const $DLL_NAME = "SMServerMbdd.dll"
+Dim Const $APP_TITLE = "SMSrvMbdd Host [" & (@AutoItX64? "64bit]" : "32bit]")
 Dim Const $INT_TYPE = @AutoItX64? "int64" : "int"
 
-Dim $dll = DllOpen("SMServerMbdd.dll")
 Dim $handler = 0
 Dim $srvHandle = 0
 Dim $doReply = True
-
+Dim $dll = DllOpen($DLL_NAME)
 
 If $dll = -1 Then
 	MsgBox(0, $APP_TITLE, "Could not load SMSrvMbdd.dll.")
@@ -24,8 +24,9 @@ If $dll = -1 Then
 EndIf
 
 $MainForm = GUICreate($APP_TITLE, 604, 264, 192, 124, BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX, $WS_THICKFRAME, $WS_TABSTOP))
-$MsgListView = GUICtrlCreateListView("Message", 8, 8, 585, 217)
-GUICtrlSendMsg(-1, $LVM_SETCOLUMNWIDTH, 0, 500)
+$MsgListView = GUICtrlCreateListView("Field|Value", 8, 8, 585, 217)
+GUICtrlSendMsg(-1, $LVM_SETCOLUMNWIDTH, 0, 120)
+GUICtrlSendMsg(-1, $LVM_SETCOLUMNWIDTH, 1, 460)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKRIGHT + $GUI_DOCKTOP + $GUI_DOCKBOTTOM)
 $ButtonRegister = GUICtrlCreateButton("&Register", 8, 232, 73, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
@@ -35,10 +36,11 @@ $CheckReply = GUICtrlCreateCheckbox("Re&ply", 170, 232, 60, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
 $ButtonClear = GUICtrlCreateButton("&Clear", 520, 232, 73, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKRIGHT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
-$DummyMsg = GUICtrlCreateDummy()
+$DummyUrlMsg = GUICtrlCreateDummy()
 
-Func add_msg($msg)
-	Local $idx = _GUICtrlListView_AddItem($MsgListView, $msg)
+Func add_msg($field, $val)
+	Local $idx = _GUICtrlListView_AddItem($MsgListView, $field)
+	_GUICtrlListView_AddSubItem($MsgListView, $idx, $val, 1 )
 	_GUICtrlListView_SetItemSelected($MsgListView, $idx)
 	_GUICtrlListView_EnsureVisible($MsgListView, $idx)
 EndFunc   ;==>add_msg
@@ -48,7 +50,8 @@ If @error Then
 	MsgBox(0, $APP_TITLE, "Could not obtain API level.")
 EndIf
 
-add_msg(StringFormat("SMSrvApiLevel: %i", $apiLevel[0]))
+add_msg($DLL_NAME, FileGetVersion($DLL_NAME))
+add_msg("SMSrvApiLevel", $apiLevel[0])
 
 update_buttons_state(False)
 GUICtrlSetState($CheckReply, $doReply? $GUI_CHECKED : $GUI_UNCHECKED)
@@ -56,7 +59,7 @@ GUISetState(@SW_SHOW)
 
 Func my_primitive_handler($cmd, $val)
 	If $cmd = 1 Then
-		GUICtrlSendToDummy($DummyMsg, "URL: " & $val)
+		GUICtrlSendToDummy($DummyUrlMsg, $val)
 	EndIf
     Return $doReply? 0 : -2
 EndFunc   ;==>my_callback
@@ -86,7 +89,7 @@ Func register()
 	Else
 		$srvHandle = $r[0]
 		update_buttons_state(True)
-		add_msg(StringFormat("SMSrvRegister: %x", $srvHandle))
+		add_msg("SMSrvRegister", $srvHandle)
 	EndIf
 EndFunc   ;==>register
 
@@ -98,7 +101,7 @@ Func unregister()
 		MsgBox(0, $APP_TITLE, "Could not unregister callback.", 0, $MainForm)
 	Else
 		update_buttons_state(False)
-		add_msg(StringFormat("SMSrvUnRegister: %i", $u[0]))
+		add_msg("SMSrvUnRegister", $u[0])
 		DllCallbackFree($handler)
 		$handler = 0
 		$srvHandle = 0
@@ -120,12 +123,13 @@ While True
 		Case $ButtonClear
 			_GUICtrlListView_DeleteAllItems($MsgListView)
 
-		Case $DummyMsg
-			add_msg(GUICtrlRead($DummyMsg))
+		Case $DummyUrlMsg
+			add_msg("URL", GUICtrlRead($DummyUrlMsg))
 
 		Case $GUI_EVENT_CLOSE
 			ExitLoop
 	EndSwitch
 WEnd
 
+unregister()
 DllClose($dll)
