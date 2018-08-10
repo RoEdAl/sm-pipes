@@ -15,6 +15,7 @@ Dim Const $INT_TYPE = @AutoItX64? "int64" : "int"
 Dim $dll = DllOpen("SMServerMbdd.dll")
 Dim $handler = 0
 Dim $srvHandle = 0
+Dim $doReply = True
 
 
 If $dll = -1 Then
@@ -26,9 +27,11 @@ $MainForm = GUICreate($APP_TITLE, 604, 264, 192, 124, BitOR($GUI_SS_DEFAULT_GUI,
 $MsgListView = GUICtrlCreateListView("Message", 8, 8, 585, 217)
 GUICtrlSendMsg(-1, $LVM_SETCOLUMNWIDTH, 0, 500)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKRIGHT + $GUI_DOCKTOP + $GUI_DOCKBOTTOM)
-$ButtonRegister = GUICtrlCreateButton("Register", 8, 232, 73, 25)
+$ButtonRegister = GUICtrlCreateButton("&Register", 8, 232, 73, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
 $ButtonUnregister = GUICtrlCreateButton("&UnRegister", 88, 232, 73, 25)
+GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
+$CheckReply = GUICtrlCreateCheckbox("Re&ply", 170, 232, 60, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKLEFT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
 $ButtonClear = GUICtrlCreateButton("&Clear", 520, 232, 73, 25)
 GUICtrlSetResizing(-1, $GUI_DOCKRIGHT + $GUI_DOCKBOTTOM + $GUI_DOCKWIDTH + $GUI_DOCKHEIGHT)
@@ -45,21 +48,33 @@ If @error Then
 	MsgBox(0, $APP_TITLE, "Could not obtain API level.")
 EndIf
 
-add_msg(StringFormat("API Level - %i", $apiLevel[0]))
+add_msg(StringFormat("SMSrvApiLevel: %i", $apiLevel[0]))
 
-GUICtrlSetState($ButtonRegister, $GUI_FOCUS)
+update_buttons_state(False)
+GUICtrlSetState($CheckReply, $doReply? $GUI_CHECKED : $GUI_UNCHECKED)
 GUISetState(@SW_SHOW)
 
-Func my_callback($cmd, $val)
+Func my_primitive_handler($cmd, $val)
 	If $cmd = 1 Then
-		GUICtrlSendToDummy($DummyMsg, $val)
+		GUICtrlSendToDummy($DummyMsg, "URL: " & $val)
 	EndIf
+    Return $doReply? 0 : -2
 EndFunc   ;==>my_callback
+
+Func update_buttons_state($connected)
+    if $connected Then
+        GUICtrlSetState($ButtonUnregister, BitOR($GUI_ENABLE, $GUI_FOCUS))
+		GUICtrlSetState($ButtonRegister, $GUI_DISABLE)
+    Else
+		GUICtrlSetState($ButtonRegister, BitOR($GUI_ENABLE, $GUI_FOCUS))
+		GUICtrlSetState($ButtonUnregister, $GUI_DISABLE)
+    EndIf
+EndFunc
 
 Func register()
 	If $handler Then Return
 
-	$handler = DllCallbackRegister("my_callback", $INT_TYPE, $INT_TYPE & ";wstr")
+	$handler = DllCallbackRegister("my_primitive_handler", $INT_TYPE, $INT_TYPE & ";wstr")
 
 	If $handler = 0 Then
 		MsgBox(0, $APP_TITLE, "Could not create callback.", 0, $MainForm)
@@ -70,24 +85,24 @@ Func register()
 		MsgBox(0, $APP_TITLE, "Could not register callback.", 0, $MainForm)
 	Else
 		$srvHandle = $r[0]
-		add_msg(StringFormat("Register: %x", $srvHandle))
+		update_buttons_state(True)
+		add_msg(StringFormat("SMSrvRegister: %x", $srvHandle))
 	EndIf
 EndFunc   ;==>register
 
 Func unregister()
-	If $handler = 0 Then Return
+	If Not $handler Then Return
 
 	Local $u = DllCall($dll, $INT_TYPE, "SMSrvUnRegister", "ptr", $srvHandle)
 	If @error Then
 		MsgBox(0, $APP_TITLE, "Could not unregister callback.", 0, $MainForm)
 	Else
-		add_msg(StringFormat("UnRegister: %i", $u[0]))
+		update_buttons_state(False)
+		add_msg(StringFormat("SMSrvUnRegister: %i", $u[0]))
+		DllCallbackFree($handler)
+		$handler = 0
+		$srvHandle = 0
 	EndIf
-
-	DllCallbackFree($handler)
-
-	$handler = 0
-	$srvHandle = 0
 EndFunc   ;==>unregister
 
 While True
@@ -98,6 +113,9 @@ While True
 
 		Case $ButtonUnregister
 			unregister()
+
+		Case $CheckReply
+			$doReply = (GUICtrlRead($CheckReply) = $GUI_CHECKED)? True : False
 
 		Case $ButtonClear
 			_GUICtrlListView_DeleteAllItems($MsgListView)

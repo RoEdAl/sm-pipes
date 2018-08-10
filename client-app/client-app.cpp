@@ -22,6 +22,25 @@ namespace
     typedef no_security_policy default_security_policy;
 #endif
 
+    typedef named_pipe_client<named_pipes_defaults::BUFFER_SIZE> np_client;
+
+    template<size_t S>
+    void send_url(np_client& client, const char(&url)[S])
+    {
+        CStringA json("{\"cmd\":\"url\",\"val\":\"");
+        json.Append(url);
+        json.Append("\"}");
+
+        size_t nLen = json.GetLength();
+
+        CAtlArray<BYTE> buffer;
+        buffer.SetCount(nLen);
+        Checked::memcpy_s(buffer.GetData(), nLen, (LPCSTR)json, nLen);
+
+        _tprintf(_T("client: sending URL=%S\n"), url);
+        client.SendMessage(buffer);
+    }
+
 	class ClientMessages :public pipe_client_basics::INotify
 	{
 	protected:
@@ -32,11 +51,11 @@ namespace
 
 		virtual void OnMessage(const pipe_client_basics::Buffer& buffer)
 		{
-			_tprintf(_T("msg: message size=%I64i\n"), buffer.GetCount());
+            CStringA reply(reinterpret_cast<const char*>(buffer.GetData()), static_cast<int>(buffer.GetCount()));
+            _tprintf(_T("msg: %S\n"), (LPCSTR)reply);
+
 			if (m_pClient != nullptr)
-			{
-				//m_pClient->SendMessage(buffer);
-			}
+			{}
 		}
 
 		virtual void OnDisconnect()
@@ -46,7 +65,7 @@ namespace
 
 	protected:
 
-		named_pipe_client<named_pipes_defaults::BUFFER_SIZE>* m_pClient;
+		np_client* m_pClient;
 
 	public:
 
@@ -54,7 +73,7 @@ namespace
 			:m_pClient(nullptr)
 		{}
 
-		void SetClient(named_pipe_client<named_pipes_defaults::BUFFER_SIZE>& client)
+		void SetClient(np_client& client)
 		{
 			m_pClient = &client;
 		}
@@ -63,10 +82,6 @@ namespace
 
 int main()
 {
-	CAtlArray<BYTE> buffer;
-	buffer.SetCount(5 * 1024);
-	FillMemory(buffer.GetData(), buffer.GetCount(), 0x54);
-
 	_tprintf(_T("client: version=%s\n"), _T(SMPIPES_VERSION_STR));
 #ifdef USE_LOGON_SESSION
     default_security_policy security_policy;
@@ -77,23 +92,21 @@ int main()
 #endif
 
 	ClientMessages messages;
-	named_pipe_client<named_pipes_defaults::BUFFER_SIZE> client(sPipeName, messages);
+	np_client client(sPipeName, messages);
 	messages.SetClient(client);
 	_tprintf(_T("client: pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 
-	client.Run();
+	HRESULT hRes = client.Run();
+    _tprintf(_T("client: run %08x\n"), hRes);
 
 	// 1
-	_tprintf(_T("client: sending first buffer\n"));
-	client.SendMessage(buffer);
+    send_url(client, "http://poznan.infometeo.pl");
 	_gettch();
 
 	// 2
-	_tprintf(_T("client: sending second buffer\n"));
-	buffer.SetCount(buffer.GetCount() / 2);
-	client.SendMessage(buffer);
-
+    send_url(client, "http://www.super-memory.com");
 	_gettch();
+
 	_tprintf(_T("client: stop\n"));
 	client.Stop();
 
