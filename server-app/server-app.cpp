@@ -44,7 +44,7 @@ namespace
 
         virtual void OnMessage(pipe_server_basics::INSTANCENO instanceNo, const pipe_server_basics::Buffer& buffer)
         {
-            _tprintf(_T("msg(%I64i): message size=%I64i\n"), instanceNo, buffer.GetCount());
+            _tprintf(_T("msg(%I64i): message size=%zi\n"), instanceNo, buffer.GetCount());
 			if (m_pServer != nullptr)
 			{
 				Document msg;

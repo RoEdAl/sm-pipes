@@ -27,8 +27,6 @@ END
 #if defined(SMPIPES_PLATFORM_32)
 STRINGTABLE
 BEGIN
-IDS_APP_HOST_NAME L"org.kiszka.echo"
-IDS_NATIVE_MESSAGING_HOSTS_PATH L"Software\\Google\\Chrome\\NativeMessagingHosts"
 IDS_REGISTER_GOOGLE_CHROME_INFO
 L"To register this application use as Chrome native messaging application use following switches:\n\n\
 	    --register-google-chrome-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
