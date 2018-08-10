@@ -38,11 +38,12 @@ SET_PROPERTY(DIRECTORY PROPERTY EP_BASE extlib)
 
 # RapidJSON
 
+file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/extlib/Install/project_RapidJSON/include")
+    
 ExternalProject_Add(
 	project_RapidJSON
-	GIT_REPOSITORY https://github.com/Tencent/rapidjson
-	GIT_TAG 73063f5002612c6bf64fe24f851cd5cc0d83eef9
-	GIT_PROGRESS ON
+    SOURCE_DIR "${PROJECT_SOURCE_DIR}/third-party/rapidjson"
+    DOWNLOAD_COMMAND ""
 	CMAKE_ARGS -DRAPIDJSON_BUILD_DOC=OFF
        -DRAPIDJSON_BUILD_EXAMPLES=OFF
        -DRAPIDJSON_BUILD_TESTS=OFF
