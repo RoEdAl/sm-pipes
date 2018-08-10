@@ -26,14 +26,13 @@ namespace
 {
 #include <named-pipe-server.hpp>
 #include <security-policy.hpp>
+#include <named-pipe-defaults.hpp>
 
 #ifdef USE_LOGON_SESSION
     typedef logon_sesssion_security_policy default_security_policy;
 #else
     typedef no_security_policy default_security_policy;
 #endif
-
-    constexpr size_t BUFSIZE = 762;
 
     class ServerMessages :public pipe_server_basics::INotify
     {
@@ -82,7 +81,7 @@ namespace
 
 	protected:
 
-		named_pipe_server<2, BUFSIZE, default_security_policy>* m_pServer;
+		named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy>* m_pServer;
 
 	public:
 
@@ -90,7 +89,7 @@ namespace
 			:m_pServer(nullptr)
 		{}
 
-		void SetServer(named_pipe_server<2, BUFSIZE, default_security_policy>& server)
+		void SetServer(named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy>& server)
 		{
 			m_pServer = &server;
 		}
@@ -104,7 +103,7 @@ int main()
     ServerMessages serverMessages;
 #ifdef USE_LOGON_SESSION
     default_security_policy security_policy;
-    named_pipe_server<2, BUFSIZE, default_security_policy> server(security_policy, serverMessages);
+    named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy> server(security_policy, serverMessages);
 #else
     named_pipe_server<2, BUFSIZE, default_security_policy> server(serverMessages);
 #endif

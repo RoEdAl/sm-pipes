@@ -9,6 +9,7 @@
 #include "worker-thread.hpp"
 #include "hres-routines.hpp"
 #include "pipe-server-basics.hpp"
+#include "named-pipe-defaults.hpp"
 #include "chunked-buffer.hpp"
 #include "critical-section.hpp"
 
@@ -642,7 +643,7 @@ protected:
         HRESULT hRes = pipe.CreateNamedPipe(m_sFullPipeName,
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-            INSTANCES, BUFSIZE, BUFSIZE, PIPE_CONNECT_TIMEOUT,
+            INSTANCES, BUFSIZE, BUFSIZE, named_pipes_defaults::TIMEOUT,
             nullptr);
 
         if(FAILED(hRes))
@@ -656,7 +657,7 @@ protected:
         HRESULT hRes = pipe.CreateNamedPipe(m_sFullPipeName,
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-            INSTANCES, BUFSIZE, BUFSIZE, PIPE_CONNECT_TIMEOUT,
+            INSTANCES, BUFSIZE, BUFSIZE, named_pipes_defaults::TIMEOUT,
             const_cast<CSecurityAttributes *>(bCustonSecurityAttr? &sa : nullptr));
 
         if(FAILED(hRes))

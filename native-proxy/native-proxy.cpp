@@ -14,14 +14,13 @@ namespace
 {
 #include <named-pipe-client.hpp>
 #include <security-policy.hpp>
+#include <named-pipe-defaults.hpp>
 
 #ifdef USE_LOGON_SESSION
 	typedef logon_sesssion_security_policy default_security_policy;
 #else
 	typedef no_security_policy default_security_policy;
 #endif
-
-	constexpr size_t BUFSIZE = 479;
 
 	const char JSON_CONNECTED[] = "{\"ntrnl\":\"connected\"}";
 	const char JSON_DISCONNECTED[] = "{\"ntrnl\":\"disconnected\"}";
@@ -159,7 +158,7 @@ int _tmain(int argc, TCHAR* argv[])
 #endif
 
 	ClientMessages messages;
-	named_pipe_client<BUFSIZE> client(sPipeName, messages);
+	named_pipe_client<named_pipes_defaults::BUFFER_SIZE> client(sPipeName, messages);
 
 	_ftprintf(stderr, _T("native-proxy: pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 

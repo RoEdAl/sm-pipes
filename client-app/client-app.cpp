@@ -14,14 +14,13 @@ namespace
 {
 #include <named-pipe-client.hpp>
 #include <security-policy.hpp>
+#include <named-pipe-defaults.hpp>
 
 #ifdef USE_LOGON_SESSION
     typedef logon_sesssion_security_policy default_security_policy;
 #else
     typedef no_security_policy default_security_policy;
 #endif
-
-	constexpr size_t BUFSIZE = 513;
 
 	class ClientMessages :public pipe_client_basics::INotify
 	{
@@ -47,7 +46,7 @@ namespace
 
 	protected:
 
-		named_pipe_client<BUFSIZE>* m_pClient;
+		named_pipe_client<named_pipes_defaults::BUFFER_SIZE>* m_pClient;
 
 	public:
 
@@ -55,7 +54,7 @@ namespace
 			:m_pClient(nullptr)
 		{}
 
-		void SetClient(named_pipe_client<BUFSIZE>& client)
+		void SetClient(named_pipe_client<named_pipes_defaults::BUFFER_SIZE>& client)
 		{
 			m_pClient = &client;
 		}
@@ -78,7 +77,7 @@ int main()
 #endif
 
 	ClientMessages messages;
-	named_pipe_client<BUFSIZE> client(sPipeName, messages);
+	named_pipe_client<named_pipes_defaults::BUFFER_SIZE> client(sPipeName, messages);
 	messages.SetClient(client);
 	_tprintf(_T("client: pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 
@@ -102,4 +101,3 @@ int main()
 	_tprintf(_T("client: bye\n"));
     return 0;
 }
-

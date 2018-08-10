@@ -11,8 +11,6 @@ class pipe_server_basics
 {
 protected:
 
-    static const DWORD PIPE_CONNECT_TIMEOUT = 5000;
-
     enum INSTANCE_STATE
     {
         INSTANCE_STATE_CONNECTING,
