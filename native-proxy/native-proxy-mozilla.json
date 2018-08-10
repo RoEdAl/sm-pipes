@@ -1,0 +1,7 @@
+{
+  "name": "$APPNAME$",
+  "description": "This is application description",
+  "path": "$APPBIN$",
+  "type": "stdio",
+  "allowed_extensions": [ "aaa@xxx.zz" ]
+}

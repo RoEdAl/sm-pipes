@@ -32,7 +32,7 @@ namespace
 	}
 
 	template<size_t S>
-	void push_size_tmpl()
+	void push_size()
 	{
 		UINT32 nSize = S;
 		fwrite(&nSize, sizeof(nSize), 1, stdout);
@@ -41,7 +41,7 @@ namespace
 	template<size_t S>
 	void push_static_msg(const char (&str)[S])
 	{
-		push_size_tmpl<S>();
+		push_size<S>();
 		fwrite(str, S, 1, stdout);
 		fflush(stdout);
 	}
@@ -65,7 +65,7 @@ namespace
 				fflush(stdout);
 			}
 
-			_ftprintf(stderr, _T("native-proxy: msg - size=%I64i\n"), buffer.GetCount());
+			_ftprintf(stderr, _T("native-proxy: msg - size=%zi\n"), buffer.GetCount());
 		}
 
 		virtual void OnDisconnect()
@@ -100,44 +100,79 @@ int _tmain(int argc, TCHAR* argv[])
 {
 	if (argc == 2)
 	{ // registration
-		if (!_tcscmp(argv[1], _T("--register-google-chrome-hklm")))
+		if (!_tcscmp(argv[1], _T("--register-google-hklm")))
 		{
-			return register_chrome_native_msg_host(true, false, argv[0]);
+			return register_native_msg_host(true, true, false, argv[0]);
 		}
-		else if (!_tcscmp(argv[1], _T("--register-google-chrome-hkcu")))
+		else if (!_tcscmp(argv[1], _T("--register-google-hkcu")))
 		{
-			return register_chrome_native_msg_host(false, false, argv[0]);
+			return register_native_msg_host(true, false, false, argv[0]);
 		}
-		else if (!_tcscmp(argv[1], _T("--unregister-google-chrome-hklm")))
+		else if (!_tcscmp(argv[1], _T("--unregister-google-hklm")))
 		{
-			return unregister_chrome_native_msg_host(true, false);
+			return unregister_native_msg_host(true, true, false);
 		}
-		else if (!_tcscmp(argv[1], _T("--unregister-google-chrome-hkcu")))
+		else if (!_tcscmp(argv[1], _T("--unregister-google-hkcu")))
 		{
-			return unregister_chrome_native_msg_host(false, false);
+			return unregister_native_msg_host(true, false, false);
 		}
-		if (!_tcscmp(argv[1], _T("--alt-register-google-chrome-hklm")))
+		if (!_tcscmp(argv[1], _T("--alt-register-google-hklm")))
 		{
-			return register_chrome_native_msg_host(true, true, argv[0]);
+			return register_native_msg_host(true, true, true, argv[0]);
 		}
-		else if (!_tcscmp(argv[1], _T("--alt-register-google-chrome-hkcu")))
+		else if (!_tcscmp(argv[1], _T("--alt-register-google-hkcu")))
 		{
-			return register_chrome_native_msg_host(false, true, argv[0]);
+			return register_native_msg_host(true, false, true, argv[0]);
 		}
-		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-chrome-hklm")))
+		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-hklm")))
 		{
-			return unregister_chrome_native_msg_host(true, true);
+			return unregister_native_msg_host(true, true, true);
 		}
-		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-chrome-hkcu")))
+		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-hkcu")))
 		{
-			return unregister_chrome_native_msg_host(false, true);
+			return unregister_native_msg_host(true, false, true);
 		}
+        else if(!_tcscmp(argv[1], _T("--register-mozilla-hklm")))
+        {
+            return register_native_msg_host(false, true, false, argv[0]);
+        }
+        else if(!_tcscmp(argv[1], _T("--register-mozilla-hkcu")))
+        {
+            return register_native_msg_host(false, false, false, argv[0]);
+        }
+        else if(!_tcscmp(argv[1], _T("--unregister-mozilla-hklm")))
+        {
+            return unregister_native_msg_host(false, true, false);
+        }
+        else if(!_tcscmp(argv[1], _T("--unregister-mozilla-hkcu")))
+        {
+            return unregister_native_msg_host(false, false, false);
+        }
+        if(!_tcscmp(argv[1], _T("--alt-register-mozilla-hklm")))
+        {
+            return register_native_msg_host(false, true, true, argv[0]);
+        }
+        else if(!_tcscmp(argv[1], _T("--alt-register-mozilla-hkcu")))
+        {
+            return register_native_msg_host(false, false, true, argv[0]);
+        }
+        else if(!_tcscmp(argv[1], _T("--alt-unregister-mozilla-hklm")))
+        {
+            return unregister_native_msg_host(false, true, true);
+        }
+        else if(!_tcscmp(argv[1], _T("--alt-unregister-mozilla-hkcu")))
+        {
+            return unregister_native_msg_host(false, false, true);
+        }
 		else if (!_tcscmp(argv[1], _T("--register")) || !_tcscmp(argv[1], _T("--register-info")))
 		{
 			CString sDesc;
-			ATLVERIFY(sDesc.LoadString(IDS_REGISTER_GOOGLE_CHROME_INFO));
+			ATLVERIFY(sDesc.LoadString(IDS_REGISTER_GOOGLE_INFO));
 			_fputts(sDesc, stdout);
-			_fputtc(_T('\n'), stdout);
+			_fputts(_T("\n\n"), stdout);
+            ATLVERIFY(sDesc.LoadString(IDS_REGISTER_MOZILLA_INFO));
+            _fputts(sDesc, stdout);
+            _fputtc(_T('\n'), stdout);
 			return 0;
 		}
 	}

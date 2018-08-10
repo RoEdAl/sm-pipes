@@ -48,9 +48,9 @@ namespace
 		return res;
 	}
 
-	CStringA get_manifest(const CStringA sExeName)
+	CStringA get_manifest(bool google, const CStringA sExeName)
 	{
-		CStringA sManifest(get_json(IDR_JSON_MANIFEST));
+		CStringA sManifest(get_json(google? IDR_JSON_MANIFEST_GOOGLE : IDR_JSON_MANIFEST_MOZILLA));
 
 		CStringA s;
 		ATLVERIFY(s.LoadString(IDS_APP_HOST_NAME));
@@ -101,10 +101,10 @@ namespace
 }
 
 // HKLM or HKCU
-HRESULT register_chrome_native_msg_host(bool hklm, bool alt, LPCTSTR pszAppFullPath)
+HRESULT register_native_msg_host(bool google, bool hklm, bool alt, LPCTSTR pszAppFullPath)
 {
 	CString sManifestPath(get_manifest_full_path(pszAppFullPath));
-	CStringA manifest(get_manifest(get_exe_bin(pszAppFullPath)));
+	CStringA manifest(get_manifest(google, get_exe_bin(pszAppFullPath)));
 
 	if (!create_manifest_file(sManifestPath, manifest))
 	{
@@ -116,7 +116,7 @@ HRESULT register_chrome_native_msg_host(bool hklm, bool alt, LPCTSTR pszAppFullP
 	CRegKey regNativeMessagingHosts;
 	CString sKey;
 
-	ATLVERIFY(sKey.LoadString(IDS_NATIVE_MESSAGING_HOSTS_PATH));
+	ATLVERIFY(sKey.LoadString(google? IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH : IDS_NATIVE_MESSAGING_MOZILLA_HOSTS_PATH));
 	LONG nRes = regNativeMessagingHosts.Create(hklm ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
 		sKey,
 		REG_NONE, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE | (alt ? ALT_REG_KEY : 0), nullptr,
@@ -129,19 +129,7 @@ HRESULT register_chrome_native_msg_host(bool hklm, bool alt, LPCTSTR pszAppFullP
 	}
 
 	ATLVERIFY(sKey.LoadString(IDS_APP_HOST_NAME));
-	nRes = regThisAppKey.Create(regNativeMessagingHosts,
-		sKey,
-		REG_NONE, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE | (alt ? ALT_REG_KEY : 0), nullptr,
-		&dwDisposition);
-
-	if (nRes != ERROR_SUCCESS)
-	{
-		_tprintf(_T("native-proxy: cannot open/create registry key #2 - error code: %d\n"), nRes);
-		return AtlHresultFromWin32(nRes);
-	}
-
-	nRes = regThisAppKey.SetStringValue(nullptr, sManifestPath);
-
+    nRes = regNativeMessagingHosts.SetKeyValue(sKey, sManifestPath);
 	if (nRes != ERROR_SUCCESS)
 	{
 		_tprintf(_T("native-proxy: cannot modify registry key - error code: %d\n"), nRes);
@@ -151,11 +139,11 @@ HRESULT register_chrome_native_msg_host(bool hklm, bool alt, LPCTSTR pszAppFullP
 	return S_OK;
 }
 
-HRESULT unregister_chrome_native_msg_host(bool hklm, bool alt)
+HRESULT unregister_native_msg_host(bool google, bool hklm, bool alt)
 {
 	CRegKey regNativeMessagingHosts;
 	CString sKey;
-	ATLVERIFY(sKey.LoadString(IDS_NATIVE_MESSAGING_HOSTS_PATH));
+    ATLVERIFY(sKey.LoadString(google ? IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH : IDS_NATIVE_MESSAGING_MOZILLA_HOSTS_PATH));
 	LONG nRes = regNativeMessagingHosts.Open(hklm ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER, sKey, KEY_READ | KEY_WRITE | (alt ? ALT_REG_KEY : 0));
 
 	if (nRes != ERROR_SUCCESS)

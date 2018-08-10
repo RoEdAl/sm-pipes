@@ -16,44 +16,77 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 */
 //0                       ICON                    "../gui/icons/cd_mka.ico"
 
-IDR_JSON_MANIFEST         JSON                    "native-proxy.json"
+IDR_JSON_MANIFEST_GOOGLE         JSON                    "native-proxy-google.json"
+IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-proxy-mozilla.json"
 
 STRINGTABLE
 BEGIN
 	IDS_APP_HOST_NAME L"org.kiszka.echo"
-	IDS_NATIVE_MESSAGING_HOSTS_PATH L"Software\\Google\\Chrome\\NativeMessagingHosts"
+
+    IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH  L"Software\\Google\\Chrome\\NativeMessagingHosts"
+    IDS_NATIVE_MESSAGING_MOZILLA_HOSTS_PATH L"Software\\Mozilla\\NativeMessagingHosts"
 END
 
 #if defined(SMPIPES_PLATFORM_32)
 STRINGTABLE
 BEGIN
-IDS_REGISTER_GOOGLE_CHROME_INFO
-L"To register this application use as Chrome native messaging application use following switches:\n\n\
-	    --register-google-chrome-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
-	    --register-google-chrome-hkcu        :register at HKEY_CURRENT_USER\n\
-	    --unregister-google-chrome-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
-	    --unregister-google-chrome-hklm      :unregister from HKEY_CURRENT_USER\n\n\
-	    --alt-register-google-chrome-hklm    :register at HKEY_LOCAL_MACHINE 64bit [Admin]\n\
-	    --alt-register-google-chrome-hkcu    :register at HKEY_CURRENT_USER 64bit\n\
-	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_LOCAL_MACHINE 64bit [Admin]\n\
-	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_CURRENT_USER 64bit\n\n\
+IDS_REGISTER_GOOGLE_INFO
+L"In order to register this application as Google Chrome native messaging application use following switches:\n\n\
+	    --register-google-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-google-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-google-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-google-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-google-hklm    :register at HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-register-google-hkcu    :register at HKEY_CURRENT_USER 64bit\n\
+	    --alt-unregister-google-hklm  :unregister from HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-unregister-google-hklm  :unregister from HKEY_CURRENT_USER 64bit\n\n\
        See also: http://developer.chrome.com/extensions/nativeMessaging"
-	END
+END
+
+STRINGTABLE
+BEGIN
+IDS_REGISTER_MOZILLA_INFO
+L"In order to register this application as Mozilla native messaging application use following switches:\n\n\
+	    --register-mozilla-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-mozilla-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-mozilla-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-mozilla-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-mozilla-hklm    :register at HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-register-mozilla-hkcu    :register at HKEY_CURRENT_USER 64bit\n\
+	    --alt-unregister-mozilla-hklm  :unregister from HKEY_LOCAL_MACHINE 64bit [Admin]\n\
+	    --alt-unregister-mozilla-hklm  :unregister from HKEY_CURRENT_USER 64bit\n\n\
+       See also: http://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests"
+ END
 #elif defined(SMPIPES_PLATFORM_64)
 STRINGTABLE
 BEGIN
-IDS_REGISTER_GOOGLE_CHROME_INFO
-L"To register this application use as Chrome native messaging application use following switches:\n\n\
-	    --register-google-chrome-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
-	    --register-google-chrome-hkcu        :register at HKEY_CURRENT_USER\n\
-	    --unregister-google-chrome-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
-	    --unregister-google-chrome-hklm      :unregister from HKEY_CURRENT_USER\n\n\
-	    --alt-register-google-chrome-hklm    :register at HKEY_LOCAL_MACHINE 32bit [Admin]\n\
-	    --alt-register-google-chrome-hkcu    :register at HKEY_CURRENT_USER 32bit\n\
-	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_LOCAL_MACHINE 32bit [Admin]\n\
-	    --alt-unregister-google-chrome-hklm  :unregister from HKEY_CURRENT_USER 32bit\n\n\
+IDS_REGISTER_GOOGLE_INFO
+L"In order to register this application as Google Chrome native messaging application use following switches:\n\n\
+	    --register-google-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-google-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-google-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-google-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-google-hklm    :register at HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-register-google-hkcu    :register at HKEY_CURRENT_USER 32bit\n\
+	    --alt-unregister-google-hklm  :unregister from HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-unregister-google-hklm  :unregister from HKEY_CURRENT_USER 32bit\n\n\
        See also: http://developer.chrome.com/extensions/nativeMessaging"
-	END
+END
+
+STRINGTABLE
+BEGIN
+IDS_REGISTER_MOZILLA_INFO
+L"In order to register this application as Mozilla native messaging application use following switches:\n\n\
+	    --register-mozilla-hklm        :register at HKEY_LOCAL_MACHINE [Admin]\n\
+	    --register-mozilla-hkcu        :register at HKEY_CURRENT_USER\n\
+	    --unregister-mozilla-hklm      :unregister from HKEY_LOCAL_MACHINE [Admin]\n\
+	    --unregister-mozilla-hklm      :unregister from HKEY_CURRENT_USER\n\n\
+	    --alt-register-mozilla-hklm    :register at HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-register-mozilla-hkcu    :register at HKEY_CURRENT_USER 32bit\n\
+	    --alt-unregister-mozilla-hklm  :unregister from HKEY_LOCAL_MACHINE 32bit [Admin]\n\
+	    --alt-unregister-mozilla-hklm  :unregister from HKEY_CURRENT_USER 32bit\n\n\
+       See also: http://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests"
+ END
 #else
 #error "Unknown architecture"
 #endif
