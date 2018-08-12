@@ -1,0 +1,42 @@
+[
+    {
+        "cmd": "url",
+        "val": "https://www.randomlists.com/urls?qty=10"
+    },
+    {
+        "cmd": "url",
+        "val": "http://www.example.com/book.html"
+    },
+    {
+        "cmd": "url",
+        "val": "https://www.example.com/"
+    },
+    {
+        "cmd": "url",
+        "val": "http://www.example.com/acoustics"
+    },
+    {
+        "cmd": "url",
+        "val": "http://example.com/#alarm"
+    },
+    {
+        "cmd": "url",
+        "val": "https://www.example.com/bait.htm"
+    },
+    {
+        "cmd": "url",
+        "val": "https://www.example.com/"
+    },
+    {
+        "cmd": "url",
+        "val": "http://www.example.com/acoustics/branch.php"
+    },
+    {
+        "cmd": "url",
+        "val": "http://blow.example.org/baseball"
+    },
+    {
+        "cmd": "url",
+        "val": "https://www.example.com/brass/bit"
+    }
+]
