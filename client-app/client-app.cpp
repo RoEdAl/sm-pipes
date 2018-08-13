@@ -67,6 +67,7 @@ namespace
 #endif
 
     typedef named_pipe_client<named_pipes_defaults::BUFFER_SIZE> np_client;
+	typedef json::GenericStringBuffer<json::UTF16<>> WStringBuffer;
 
     void send_msg(np_client& client, const json::Value& msg)
     {
@@ -79,7 +80,19 @@ namespace
         buf.SetCount(nBufferSize);
         Checked::memcpy_s(buf.GetData(), nBufferSize, strm.GetString(), nBufferSize);
 
-        _tprintf(_T("client: sending next message size=%zi\n"), buf.GetCount());
+		if (nBufferSize <= 512)
+		{
+			WStringBuffer wbuf;
+			json::Writer<WStringBuffer> wwriter(wbuf);
+			msg.Accept(wwriter);
+
+			CStringW sMsg(wbuf.GetString(), static_cast<int>(wbuf.GetLength()));
+			_tprintf(_T("client > %s\n"), (LPCWSTR)sMsg);
+		}
+		else
+		{
+			_tprintf(_T("client > size=%zi\n"), buf.GetCount());
+		}
         client.SendMessage(buf);
     }
 
@@ -88,13 +101,13 @@ namespace
 	protected:
 		virtual void OnConnect()
 		{
-			_tprintf(_T("msg: connect\n"));
+			_tprintf(_T("client < CONNECT\n"));
 		}
 
 		virtual void OnMessage(const pipe_client_basics::Buffer& buffer)
 		{
             CStringA reply(reinterpret_cast<const char*>(buffer.GetData()), static_cast<int>(buffer.GetCount()));
-            _tprintf(_T("msg: %S\n"), (LPCSTR)reply);
+            _tprintf(_T("client < %S\n"), (LPCSTR)reply);
 
 			if (m_pClient != nullptr)
 			{}
@@ -102,7 +115,7 @@ namespace
 
 		virtual void OnDisconnect()
 		{
-			_tprintf(_T("msg: disconnect\n"));
+			_tprintf(_T("client < DISCONNECT\n"));
 		}
 
 	protected:
@@ -124,7 +137,7 @@ namespace
 
 int _tmain(int argc, TCHAR* argv[])
 {
-	_tprintf(_T("client: version=%s\n"), _T(SMPIPES_VERSION_STR));
+	_tprintf(_T("client : version=%s\n"), _T(SMPIPES_VERSION_STR));
 
     json::Document doc;
 
@@ -134,7 +147,7 @@ int _tmain(int argc, TCHAR* argv[])
 
         if(!res)
         {
-            _tprintf(_T("client: unable to parse JSON document - offset %u: %S\n"),
+            _tprintf(_T("client : unable to parse JSON document - offset %u: %S\n"),
                 (unsigned)res.Offset(),
                 GetParseError_En(res.Code()));
             return 3;
@@ -147,7 +160,7 @@ int _tmain(int argc, TCHAR* argv[])
 
         if(res)
         {
-            _tprintf(_T("client: cannot open file \"%s\" - error code: %d\n"), argv[1], res);
+            _tprintf(_T("client : cannot open file \"%s\" - error code: %d\n"), argv[1], res);
             return 2;
         }
 
@@ -161,7 +174,7 @@ int _tmain(int argc, TCHAR* argv[])
             if(!res)
             {
                 fclose(f);
-                _tprintf(_T("client: unable to parse JSON document - offset %u: %S\n"),
+                _tprintf(_T("client : unable to parse JSON document - offset %u: %S\n"),
                     (unsigned)res.Offset(),
                     GetParseError_En(res.Code()));
                 return 3;
@@ -172,7 +185,7 @@ int _tmain(int argc, TCHAR* argv[])
 
     if(!doc.IsArray())
     {
-        _tprintf(_T("client: specified JSON document is not an array.\n"));
+        _tprintf(_T("client : specified JSON document is not an array.\n"));
         return 4;
     }
 
@@ -187,10 +200,10 @@ int _tmain(int argc, TCHAR* argv[])
 	ClientMessages messages;
 	np_client client(sPipeName, messages);
 	messages.SetClient(client);
-	_tprintf(_T("client: opening pipe=%s\n"), (LPCTSTR)client.GetPipeName());
+	_tprintf(_T("client : opening pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 
 	HRESULT hRes = client.Run();
-    _tprintf(_T("client: run %08x\n"), hRes);
+    _tprintf(_T("client : run hr= %08x\n"), hRes);
 
     if(FAILED(hRes))
     {
@@ -201,13 +214,13 @@ int _tmain(int argc, TCHAR* argv[])
     {
         if(!v.IsObject())
         {
-            _tprintf(_T("client: skipping non-object array element\n"));
+            _tprintf(_T("client : skipping non-object array element\n"));
             continue;
         }
 
         if(!(v.HasMember("cmd") && v.HasMember("val")))
         {
-            _tprintf(_T("client: skipping invalid object array element\n"));
+            _tprintf(_T("client : skipping invalid object array element\n"));
             continue;
         }
 
@@ -216,15 +229,15 @@ int _tmain(int argc, TCHAR* argv[])
         TCHAR c = _gettch();
         if(c == _T('q'))
         {
-            _tprintf(_T("client: exit from loop\n"));
+            _tprintf(_T("client : exit from loop\n"));
             break;
         }
     }
 
-	_tprintf(_T("client: stop\n"));
+	_tprintf(_T("client : stop\n"));
 	hRes = client.Stop();
 
 	_gettch();
-	_tprintf(_T("client: bye - %08x\n"), hRes);
+	_tprintf(_T("client: bye, hr= %08x\n"), hRes);
     return hRes;
 }
