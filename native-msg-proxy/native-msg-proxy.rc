@@ -115,10 +115,10 @@ BEGIN
             VALUE "CompanyName", "Who Knows - xxx@yyy.zz"
             VALUE "FileDescription", "This is short description."
             VALUE "FileVersion", SMPIPES_VERSION_STR
-            VALUE "InternalName", "native-proxy"
+            VALUE "InternalName", "native-msg-proxy"
             VALUE "LegalCopyright", "Simplified BSD License - http://www.opensource.org/licenses/bsd-license.html"
-            VALUE "OriginalFilename", "SMNativeProxy.exe"
-            VALUE "ProductName", "SMNativeProxy.exe"
+            VALUE "OriginalFilename", "SMNativeMsgProxy.exe"
+            VALUE "ProductName", "SMNativeMsgProxy.exe"
             VALUE "ProductVersion", SMPIPES_VERSION_STR
         END
     END
