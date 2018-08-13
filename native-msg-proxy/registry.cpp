@@ -9,6 +9,18 @@
 
 namespace
 {
+	HRESULT get_app_full_path(CString& strAppDir)
+	{
+		if (0 != ::GetModuleFileName(NULL, CStrBuf(strAppDir, MAX_PATH), MAX_PATH))
+		{
+			return S_OK;
+		}
+		else
+		{
+			return AtlHresultFromLastError();
+		}
+	}
+
 	UINT get_json_from_resource(UINT nIdrJson, LPCSTR* pszScript)
 	{
 		HMODULE hThisModule = ::GetModuleHandle(nullptr);
@@ -63,6 +75,11 @@ namespace
 	CString get_manifest_full_path(LPCTSTR pszAppFullPath)
 	{
 		CPath path(pszAppFullPath);
+		if (path.IsRelative())
+		{
+			HRESULT hRes = get_app_full_path(path.m_strPath);
+			ATLASSERT(SUCCEEDED(hRes));
+		}
 		path.RenameExtension(_T(".json"));
 		return path;
 	}
