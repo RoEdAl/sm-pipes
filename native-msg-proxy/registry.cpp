@@ -9,6 +9,8 @@
 
 namespace
 {
+#include "printf.hpp"
+
 	HRESULT get_app_full_path(CString& strAppDir)
 	{
 		if (0 != ::GetModuleFileName(NULL, CStrBuf(strAppDir, MAX_PATH), MAX_PATH))
@@ -98,7 +100,7 @@ namespace
 
 		if (res)
 		{
-			_tprintf(_T("native-proxy: cannot create manifest file \"%s\" - error code: %d\n"), (LPCTSTR)sManifestFullPath, res);
+			Printf(_T("! cannot create manifest file \"%s\" - error code: %d\n"), (LPCTSTR)sManifestFullPath, res);
 			return false;
 		}
 
@@ -136,12 +138,14 @@ HRESULT register_native_msg_host(bool google, bool hklm, bool alt, LPCTSTR pszAp
 	ATLVERIFY(sKey.LoadString(google? IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH : IDS_NATIVE_MESSAGING_MOZILLA_HOSTS_PATH));
 	LONG nRes = regNativeMessagingHosts.Create(hklm ? HKEY_LOCAL_MACHINE : HKEY_CURRENT_USER,
 		sKey,
-		REG_NONE, REG_OPTION_NON_VOLATILE, KEY_READ | KEY_WRITE | (alt ? ALT_REG_KEY : 0), nullptr,
+		REG_NONE, REG_OPTION_NON_VOLATILE,
+		KEY_READ | KEY_WRITE | (alt ? ALT_REG_KEY : 0),
+		nullptr,
 		&dwDisposition);
 
 	if (nRes != ERROR_SUCCESS)
 	{
-		_tprintf(_T("native-proxy: cannot open registry key #1 - error code: %d\n"), nRes);
+		Printf(_T("! cannot open registry key #1 - error code: %d\n"), nRes);
 		return AtlHresultFromWin32(nRes);
 	}
 
@@ -149,7 +153,7 @@ HRESULT register_native_msg_host(bool google, bool hklm, bool alt, LPCTSTR pszAp
     nRes = regNativeMessagingHosts.SetKeyValue(sKey, sManifestPath);
 	if (nRes != ERROR_SUCCESS)
 	{
-		_tprintf(_T("native-proxy: cannot modify registry key - error code: %d\n"), nRes);
+		Printf(_T("! cannot modify registry key - error code: %d\n"), nRes);
 		return AtlHresultFromWin32(nRes);
 	}
 
@@ -167,7 +171,7 @@ HRESULT unregister_native_msg_host(bool google, bool hklm, bool alt)
 	{
 		if (nRes != ERROR_FILE_NOT_FOUND)
 		{
-			_tprintf(_T("native-proxy: cannot open registry key #1 - error code: %d\n"), nRes);
+			Printf(_T("! cannot open registry key #1 - error code: %d\n"), nRes);
 			return AtlHresultFromWin32(nRes);
 		}
 		else
@@ -181,7 +185,7 @@ HRESULT unregister_native_msg_host(bool google, bool hklm, bool alt)
 
 	if (nRes != ERROR_SUCCESS && nRes != ERROR_FILE_NOT_FOUND)
 	{
-		_tprintf(_T("native-proxy: cannot delete subkey - error code: %d\n"), nRes);
+		Printf(_T("! cannot delete subkey - error code: %d\n"), nRes);
 		return AtlHresultFromWin32(nRes);
 	}
 

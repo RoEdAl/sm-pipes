@@ -15,19 +15,13 @@ namespace
 #include <named-pipe-client.hpp>
 #include <security-policy.hpp>
 #include <named-pipe-defaults.hpp>
+#include "printf.hpp"
 
 #ifdef USE_LOGON_SESSION
 	typedef logon_sesssion_security_policy default_security_policy;
 #else
 	typedef no_security_policy default_security_policy;
 #endif
-
-	template<size_t S, typename... T>
-	void Printf(const TCHAR (&fmt)[S], T... args)
-	{
-		_fputts(_T("native-msg-proxy "), stderr);
-		_ftprintf(stderr, fmt, args...);
-	}
 
 	const char JSON_CONNECTED[] = "{\"ntrnl\":\"connected\"}";
 	const char JSON_DISCONNECTED[] = "{\"ntrnl\":\"disconnected\"}";

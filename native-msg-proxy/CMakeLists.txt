@@ -15,6 +15,7 @@ SOURCE_GROUP("Resource files" FILES
 
 ADD_EXECUTABLE(SMNativeMsgProxy 
 	native-proxy.cpp
+	printf.hpp
 	registry.cpp registry.h
 	native-proxy.rc resource.h
 	native-proxy-google.json
