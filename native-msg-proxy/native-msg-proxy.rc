@@ -16,8 +16,8 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 */
 //0                       ICON                    "../gui/icons/cd_mka.ico"
 
-IDR_JSON_MANIFEST_GOOGLE         JSON                    "native-proxy-google.json"
-IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-proxy-mozilla.json"
+IDR_JSON_MANIFEST_GOOGLE         JSON                    "native-msg-proxy-google.json"
+IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-msg-proxy-mozilla.json"
 
 STRINGTABLE
 BEGIN
