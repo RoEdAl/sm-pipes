@@ -1,5 +1,5 @@
 #
-# SMNativeProxy
+# SMNativeMsgProxy
 #
 
 file(GLOB PROJECT_PUBLIC_HEADER_FILES "${CMAKE_CURRENT_SOURCE_DIR}/../include/*.hpp")
@@ -13,7 +13,7 @@ SOURCE_GROUP("Resource files" FILES
 	native-proxy-mozilla.json
 )
 
-ADD_EXECUTABLE(SMNativeProxy 
+ADD_EXECUTABLE(SMNativeMsgProxy 
 	native-proxy.cpp
 	registry.cpp registry.h
 	native-proxy.rc resource.h
@@ -22,10 +22,10 @@ ADD_EXECUTABLE(SMNativeProxy
 	${PROJECT_PUBLIC_HEADER_FILES}
 )
 
-SET_TARGET_PROPERTIES(SMNativeProxy
+SET_TARGET_PROPERTIES(SMNativeMsgProxy
    PROPERTIES
    CXX_STANDARD 14
    FOLDER "Client"
 )
 
-INSTALL(TARGETS SMNativeProxy DESTINATION bin)
+INSTALL(TARGETS SMNativeMsgProxy DESTINATION bin)
