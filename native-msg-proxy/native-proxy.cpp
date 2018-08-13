@@ -52,7 +52,7 @@ namespace
 		virtual void OnConnect()
 		{
 			push_static_msg(JSON_CONNECTED);
-			_ftprintf(stderr, _T("native-proxy: connect\n"));
+			_ftprintf(stderr, _T("native-proxy : CONNECT\n"));
 		}
 
 		virtual void OnMessage(const pipe_client_basics::Buffer& buffer)
@@ -65,13 +65,13 @@ namespace
 				fflush(stdout);
 			}
 
-			_ftprintf(stderr, _T("native-proxy: msg - size=%zi\n"), buffer.GetCount());
+			_ftprintf(stderr, _T("native-proxy < size=%zi\n"), buffer.GetCount());
 		}
 
 		virtual void OnDisconnect()
 		{
 			push_static_msg(JSON_DISCONNECTED);
-			_ftprintf(stderr, _T("native-proxy: disconnect\n"));
+			_ftprintf(stderr, _T("native-proxy : DISCONNECT\n"));
 		}
 	};
 
@@ -82,14 +82,14 @@ namespace
 		if (result == -1)
 		{
 			bRes = false;
-			_tperror(_T("native-proxy: Could not set binary mode for stdin"));
+			_tperror(_T("native-proxy : Could not set binary mode for stdin"));
 		}
 
 		result = _setmode(_fileno(stdout), _O_BINARY);
 		if (result == -1)
 		{
 			bRes = false;
-			_tperror(_T("native-proxy: Could not set binary mode for stdout"));
+			_tperror(_T("native-proxy : Could not set binary mode for stdout"));
 		}
 
 		return bRes;
@@ -182,7 +182,7 @@ int _tmain(int argc, TCHAR* argv[])
 		return 1;
 	}
 
-	_ftprintf(stderr, _T("native-proxy: version=%s\n"), _T(SMPIPES_VERSION_STR));
+	_ftprintf(stderr, _T("native-proxy : version=%s\n"), _T(SMPIPES_VERSION_STR));
 
 #ifdef USE_LOGON_SESSION
 	default_security_policy security_policy;
@@ -195,7 +195,7 @@ int _tmain(int argc, TCHAR* argv[])
 	ClientMessages messages;
 	named_pipe_client<named_pipes_defaults::BUFFER_SIZE> client(sPipeName, messages);
 
-	_ftprintf(stderr, _T("native-proxy: pipe=%s\n"), (LPCTSTR)client.GetPipeName());
+	_ftprintf(stderr, _T("native-proxy : pipe=%s\n"), (LPCTSTR)client.GetPipeName());
 
 	client.Run();
 
@@ -203,7 +203,7 @@ int _tmain(int argc, TCHAR* argv[])
 	UINT32 nSize, nCurrentSize = 0;
 	CAtlArray<BYTE> buffer;
 
-	_ftprintf(stderr, _T("native-proxy: main loop\n"));
+	_ftprintf(stderr, _T("native-proxy : main loop\n"));
 	while (!fBreak)
 	{
 		// read size
@@ -211,7 +211,7 @@ int _tmain(int argc, TCHAR* argv[])
 		{
 			if (!feof(stdin))
 			{
-				_ftprintf(stderr, _T("native-proxy: could not read message size\n"));
+				_ftprintf(stderr, _T("native-proxy : could not read message size\n"));
 			}
 			fBreak = true;
 			continue;
@@ -221,18 +221,20 @@ int _tmain(int argc, TCHAR* argv[])
 		buffer.SetCount(nSize);
 		if (!fread(reinterpret_cast<char*>(buffer.GetData()), nSize, 1, stdin))
 		{
-			_ftprintf(stderr, _T("native-proxy: could not read entire message\n"));
+			_ftprintf(stderr, _T("native-proxy : could not read entire message\n"));
 			fBreak = true;
 			continue;
 		}
+
+		_ftprintf(stderr, _T("native-proxy > size=%d\n"), nSize);
 
 		// just send received message
 		client.SendMessage(buffer);
 	}
 
-	_ftprintf(stderr, _T("native-proxy: stop\n"));
+	_ftprintf(stderr, _T("native-proxy : stop\n"));
 	HRESULT hRes = client.Stop();
 
-	_ftprintf(stderr, _T("native-proxy: bye - %08x\n"), hRes);
+	_ftprintf(stderr, _T("native-proxy : bye hr=%08x\n"), hRes);
     return hRes;
 }
