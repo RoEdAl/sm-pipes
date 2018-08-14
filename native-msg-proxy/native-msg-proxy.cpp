@@ -103,11 +103,11 @@ int _tmain(int argc, TCHAR* argv[])
 	{ // registration
 		if (!_tcscmp(argv[1], _T("--register-google-hklm")))
 		{
-			return register_native_msg_host(true, true, false, argv[0]);
+			return register_native_msg_host(true, true, false);
 		}
 		else if (!_tcscmp(argv[1], _T("--register-google-hkcu")))
 		{
-			return register_native_msg_host(true, false, false, argv[0]);
+			return register_native_msg_host(true, false, false);
 		}
 		else if (!_tcscmp(argv[1], _T("--unregister-google-hklm")))
 		{
@@ -119,11 +119,11 @@ int _tmain(int argc, TCHAR* argv[])
 		}
 		if (!_tcscmp(argv[1], _T("--alt-register-google-hklm")))
 		{
-			return register_native_msg_host(true, true, true, argv[0]);
+			return register_native_msg_host(true, true, true);
 		}
 		else if (!_tcscmp(argv[1], _T("--alt-register-google-hkcu")))
 		{
-			return register_native_msg_host(true, false, true, argv[0]);
+			return register_native_msg_host(true, false, true);
 		}
 		else if (!_tcscmp(argv[1], _T("--alt-unregister-google-hklm")))
 		{
@@ -135,11 +135,11 @@ int _tmain(int argc, TCHAR* argv[])
 		}
         else if(!_tcscmp(argv[1], _T("--register-mozilla-hklm")))
         {
-            return register_native_msg_host(false, true, false, argv[0]);
+            return register_native_msg_host(false, true, false);
         }
         else if(!_tcscmp(argv[1], _T("--register-mozilla-hkcu")))
         {
-            return register_native_msg_host(false, false, false, argv[0]);
+            return register_native_msg_host(false, false, false);
         }
         else if(!_tcscmp(argv[1], _T("--unregister-mozilla-hklm")))
         {
@@ -151,11 +151,11 @@ int _tmain(int argc, TCHAR* argv[])
         }
         if(!_tcscmp(argv[1], _T("--alt-register-mozilla-hklm")))
         {
-            return register_native_msg_host(false, true, true, argv[0]);
+            return register_native_msg_host(false, true, true);
         }
         else if(!_tcscmp(argv[1], _T("--alt-register-mozilla-hkcu")))
         {
-            return register_native_msg_host(false, false, true, argv[0]);
+            return register_native_msg_host(false, false, true);
         }
         else if(!_tcscmp(argv[1], _T("--alt-unregister-mozilla-hklm")))
         {

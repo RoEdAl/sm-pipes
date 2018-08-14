@@ -6,12 +6,13 @@
 #include <SMPipesConfig.h>
 #include "resource.h"
 #include <atl-headers.h>
+#include <errno.h>  
 
 namespace
 {
 #include "printf.hpp"
 
-	HRESULT get_app_full_path(CString& strAppDir)
+	HRESULT get_module_full_path(CString& strAppDir)
 	{
 		if (0 != ::GetModuleFileName(NULL, CStrBuf(strAppDir, MAX_PATH), MAX_PATH))
 		{
@@ -22,6 +23,11 @@ namespace
 			return AtlHresultFromLastError();
 		}
 	}
+
+    HRESULT get_module_full_path(CPath& path)
+    {
+        return get_module_full_path(path.m_strPath);
+    }
 
 	UINT get_json_from_resource(UINT nIdrJson, LPCSTR* pszScript)
 	{
@@ -62,50 +68,67 @@ namespace
 		return res;
 	}
 
-	CStringA get_manifest(bool google, const CStringA sExeName)
+	CStringA get_manifest(bool google, const CStringA& sExeName)
 	{
 		CStringA sManifest(get_json(google? IDR_JSON_MANIFEST_GOOGLE : IDR_JSON_MANIFEST_MOZILLA));
 
 		CStringA s;
 		ATLVERIFY(s.LoadString(IDS_APP_HOST_NAME));
 		sManifest.Replace("$APPNAME$", s);
-
 		sManifest.Replace("$APPBIN$", sExeName);
 		return sManifest;
 	}
 
-	CString get_manifest_full_path(LPCTSTR pszAppFullPath)
+	CString get_manifest_full_path(const CPath& exeFullPath)
 	{
-		CPath path(pszAppFullPath);
-		if (path.IsRelative())
-		{
-			HRESULT hRes = get_app_full_path(path.m_strPath);
-			ATLASSERT(SUCCEEDED(hRes));
-		}
+		CPath path(exeFullPath);
 		path.RenameExtension(_T(".json"));
 		return path;
 	}
 
-	CStringA get_exe_bin(LPCTSTR pszAppFullPath)
+	CStringA get_exe_bin(const CPath& exeFullPath)
 	{
-		CPath path(pszAppFullPath);
+		CPath path(exeFullPath);
 		path.StripPath();
 		return CStringA(path);
 	}
 
-	bool create_manifest_file(const CString& sManifestFullPath, const CStringA& sManifest)
+	bool create_manifest_file(const CPath& manifestFullPath, const CStringA& sManifest)
 	{
 		FILE* f;
-		errno_t  res = _tfopen_s(&f, sManifestFullPath, _T("wb"));
+        errno_t  res;
+
+        res = _taccess_s(manifestFullPath, 02);
+        if(res == EACCES)
+        {
+            res = _tchmod(manifestFullPath, _S_IREAD| _S_IWRITE);
+            if(res == -1)
+            {
+                res = errno;
+                Printf(_T("! cannot change permissions of file \"%s\" - error code: %d\n"), (LPCTSTR)manifestFullPath, res);
+                return false;
+            }
+        }
+
+		res = _tfopen_s(&f, manifestFullPath, _T("wb"));
 
 		if (res)
 		{
-			Printf(_T("! cannot create manifest file \"%s\" - error code: %d\n"), (LPCTSTR)sManifestFullPath, res);
+			Printf(_T("! cannot create manifest file \"%s\" - error code: %d\n"), (LPCTSTR)manifestFullPath, res);
 			return false;
 		}
 
 		fwrite(sManifest, sManifest.GetLength(), 1, f);
-		fclose(f);
+		res = fclose(f);
+
+        // make manifest read-only
+        res = _tchmod(manifestFullPath, _S_IREAD);
+        if(res == -1)
+        {
+            res = errno;
+            Printf(_T("! cannot change permissions of file \"%s\" - error code: %d\n"), (LPCTSTR)manifestFullPath, res);
+            return false;
+        }
 
 		return true;
 	}
@@ -120,12 +143,19 @@ namespace
 }
 
 // HKLM or HKCU
-HRESULT register_native_msg_host(bool google, bool hklm, bool alt, LPCTSTR pszAppFullPath)
+HRESULT register_native_msg_host(bool google, bool hklm, bool alt)
 {
-	CString sManifestPath(get_manifest_full_path(pszAppFullPath));
-	CStringA manifest(get_manifest(google, get_exe_bin(pszAppFullPath)));
+    CPath exeFullPath;
+    HRESULT hRes = get_module_full_path(exeFullPath);
+    if(FAILED(hRes))
+    {
+        return hRes;
+    }
 
-	if (!create_manifest_file(sManifestPath, manifest))
+	CPath manifestPath(get_manifest_full_path(exeFullPath));
+	CStringA manifest(get_manifest(google, get_exe_bin(exeFullPath)));
+
+	if (!create_manifest_file(manifestPath, manifest))
 	{
 		return E_FAIL;
 	}
@@ -150,7 +180,7 @@ HRESULT register_native_msg_host(bool google, bool hklm, bool alt, LPCTSTR pszAp
 	}
 
 	ATLVERIFY(sKey.LoadString(IDS_APP_HOST_NAME));
-    nRes = regNativeMessagingHosts.SetKeyValue(sKey, sManifestPath);
+    nRes = regNativeMessagingHosts.SetKeyValue(sKey, manifestPath);
 	if (nRes != ERROR_SUCCESS)
 	{
 		Printf(_T("! cannot modify registry key - error code: %d\n"), nRes);

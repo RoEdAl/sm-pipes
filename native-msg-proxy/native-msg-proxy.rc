@@ -1,5 +1,5 @@
 /*
-	native-proxy.rc
+	native-msg-proxy.rc
 */
 
 #include <windows.h>
@@ -21,7 +21,7 @@ IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-msg-proxy-mozil
 
 STRINGTABLE
 BEGIN
-	IDS_APP_HOST_NAME L"org.kiszka.echo"
+	IDS_APP_HOST_NAME L"com.super-memory.native-msg-proxy"
 
     IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH  L"Software\\Google\\Chrome\\NativeMessagingHosts"
     IDS_NATIVE_MESSAGING_MOZILLA_HOSTS_PATH L"Software\\Mozilla\\NativeMessagingHosts"
