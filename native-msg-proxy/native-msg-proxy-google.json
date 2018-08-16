@@ -3,7 +3,7 @@
   "description": "Send to SuperMemo native messaging app",
   "path": "$APPBIN$",
   "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://cipigfjhcbaiobfcabgogdkhilgocgal/"
-  ]
+    "allowed_origins": [
+        "chrome-extension://nbjjnmcmlcgdfjgmgfkhjilbalibbkmp/"
+    ]
 }

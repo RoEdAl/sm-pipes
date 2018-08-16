@@ -21,7 +21,7 @@ IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-msg-proxy-mozil
 
 STRINGTABLE
 BEGIN
-	IDS_APP_HOST_GOOGLE_NAME L"com.super-memory.native-msg-proxy"
+	IDS_APP_HOST_GOOGLE_NAME  L"com.supermemory.nativemsgproxy"
     IDS_APP_HOST_MOZILLA_NAME L"com.supermemory.nativemsgproxy"
 
     IDS_NATIVE_MESSAGING_GOOGLE_HOSTS_PATH  L"Software\\Google\\Chrome\\NativeMessagingHosts"
