@@ -41,9 +41,9 @@ namespace
 
 	template<size_t S>
 	void push_static_msg(const char (&str)[S])
-	{
-		push_size<S>();
-		fwrite(str, S, 1, stdout);
+	{ // do not send tailing zero character
+		push_size<S-1>();
+		fwrite(str, S-1, 1, stdout);
 		fflush(stdout);
 	}
 

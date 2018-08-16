@@ -73,17 +73,23 @@ namespace
 		CStringA sManifest(get_json(google? IDR_JSON_MANIFEST_GOOGLE : IDR_JSON_MANIFEST_MOZILLA));
 
 		CStringA s;
-		ATLVERIFY(s.LoadString(IDS_APP_HOST_NAME));
+		ATLVERIFY(s.LoadString(google? IDS_APP_HOST_GOOGLE_NAME : IDS_APP_HOST_MOZILLA_NAME));
 		sManifest.Replace("$APPNAME$", s);
 		sManifest.Replace("$APPBIN$", sExeName);
 		return sManifest;
 	}
 
-	CString get_manifest_full_path(const CPath& exeFullPath)
+	CString get_manifest_full_path(bool google, const CPath& exeFullPath)
 	{
 		CPath path(exeFullPath);
-		path.RenameExtension(_T(".json"));
-		return path;
+        CPath npath(exeFullPath);
+        path.RemoveFileSpec();
+        npath.StripPath();
+        npath.RemoveExtension();
+        npath.m_strPath += google ? _T("-GoggleChrome") : _T("-Mozilla");
+		npath.RenameExtension(_T(".json"));
+        path += npath;
+        return path;
 	}
 
 	CStringA get_exe_bin(const CPath& exeFullPath)
@@ -152,7 +158,7 @@ HRESULT register_native_msg_host(bool google, bool hklm, bool alt)
         return hRes;
     }
 
-	CPath manifestPath(get_manifest_full_path(exeFullPath));
+	CPath manifestPath(get_manifest_full_path(google, exeFullPath));
 	CStringA manifest(get_manifest(google, get_exe_bin(exeFullPath)));
 
 	if (!create_manifest_file(manifestPath, manifest))
@@ -179,7 +185,7 @@ HRESULT register_native_msg_host(bool google, bool hklm, bool alt)
 		return AtlHresultFromWin32(nRes);
 	}
 
-	ATLVERIFY(sKey.LoadString(IDS_APP_HOST_NAME));
+	ATLVERIFY(sKey.LoadString(google? IDS_APP_HOST_GOOGLE_NAME : IDS_APP_HOST_MOZILLA_NAME));
     nRes = regNativeMessagingHosts.SetKeyValue(sKey, manifestPath);
 	if (nRes != ERROR_SUCCESS)
 	{
@@ -210,7 +216,7 @@ HRESULT unregister_native_msg_host(bool google, bool hklm, bool alt)
 		}
 	}
 
-	ATLVERIFY(sKey.LoadString(IDS_APP_HOST_NAME));
+	ATLVERIFY(sKey.LoadString(google? IDS_APP_HOST_GOOGLE_NAME : IDS_APP_HOST_MOZILLA_NAME));
 	nRes = regNativeMessagingHosts.DeleteSubKey(sKey);
 
 	if (nRes != ERROR_SUCCESS && nRes != ERROR_FILE_NOT_FOUND)

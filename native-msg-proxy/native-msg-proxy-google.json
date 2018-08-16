@@ -1,6 +1,6 @@
 {
   "name": "$APPNAME$",
-  "description": "This is application description",
+  "description": "Send to SuperMemo native messaging app",
   "path": "$APPBIN$",
   "type": "stdio",
   "allowed_origins": [

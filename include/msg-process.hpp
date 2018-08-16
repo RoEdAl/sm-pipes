@@ -54,7 +54,7 @@ namespace msg_process
     {
         json::Document msg;
         json::ParseResult res = msg.Parse(reinterpret_cast<const char*>(buffer.GetData()), buffer.GetCount());
-        if(res)
+        if(res && msg.IsObject())
         {
             process_message(server, instanceNo, srv_handler, msg);
         }

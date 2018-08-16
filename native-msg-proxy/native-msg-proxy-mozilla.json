@@ -1,7 +1,7 @@
 {
-  "name": "$APPNAME$",
-  "description": "This is application description",
-  "path": "$APPBIN$",
-  "type": "stdio",
-  "allowed_extensions": [ "aaa@xxx.zz" ]
+    "name": "$APPNAME$",
+    "description": "Send to SuperMemo native messaging app",
+    "path": "$APPBIN$",
+    "type": "stdio",
+    "allowed_extensions": [ "smpipes@supermemory.com" ]
 }
