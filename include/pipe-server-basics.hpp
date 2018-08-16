@@ -30,7 +30,7 @@ public:
     public:
         virtual void OnConnect(INSTANCENO) = 0;
         virtual void OnMessage(INSTANCENO, const Buffer&) = 0;
-        virtual void OnDisconnect(INSTANCENO) = 0;
+        virtual void OnDisconnect(INSTANCENO, bool) = 0;
     };
 };
 

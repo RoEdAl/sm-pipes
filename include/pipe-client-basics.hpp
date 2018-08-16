@@ -22,7 +22,7 @@ public:
     public:
         virtual void OnConnect() = 0;
         virtual void OnMessage(const Buffer&) = 0;
-        virtual void OnDisconnect() = 0;
+        virtual void OnDisconnect(bool) = 0;
     };
 };
 

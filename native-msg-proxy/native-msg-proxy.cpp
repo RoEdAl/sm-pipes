@@ -69,10 +69,14 @@ namespace
 			Printf(_T("< size=%zi\n"), buffer.GetCount());
 		}
 
-		virtual void OnDisconnect()
+		virtual void OnDisconnect(bool fOrigin)
 		{
-			push_static_msg(JSON_DISCONNECTED);
-			Printf(_T("< DISCONNECT\n"));
+            if(!fOrigin)
+            {
+                push_static_msg(JSON_DISCONNECTED);
+            }
+
+			Printf(_T("< DISCONNECT(%s)\n"), fOrigin? _T("origin") : _T("answer"));
 		}
 	};
 

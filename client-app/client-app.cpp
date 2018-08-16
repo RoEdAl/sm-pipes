@@ -100,7 +100,8 @@ namespace
 		{
 			Printf(_T("> size=%zi\n"), buf.GetCount());
 		}
-        client.SendMessage(buf);
+
+        client.SendMessage(strm.GetString(), nBufferSize);
     }
 
 	class ClientMessages :public pipe_client_basics::INotify
@@ -120,9 +121,9 @@ namespace
 			{}
 		}
 
-		virtual void OnDisconnect()
+		virtual void OnDisconnect(bool fOrigin)
 		{
-			Printf(_T("< DISCONNECT\n"));
+			Printf(_T("< DISCONNECT(%s)\n"), fOrigin? _T("origin") : _T("answer"));
 		}
 
 	protected:

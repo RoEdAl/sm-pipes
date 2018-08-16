@@ -5,8 +5,6 @@
 #ifndef _CHUNKED_BUFFER_HPP_
 #define _CHUNKED_BUFFER_HPP_
 
-typedef CAtlArray<BYTE> Buffer;
-
 class CMemoryBlock
 {
 public:
@@ -16,18 +14,29 @@ public:
 	{
 		if (nSize > 0)
 		{
-			m_pBlock = reinterpret_cast<BYTE*>(malloc(nSize));
+			m_pBlock = malloc(nSize);
 			ZeroMemory(m_pBlock, nSize);
 		}
 	}
 
-	CMemoryBlock(const Buffer& buffer)
-		:m_pBlock(nullptr),m_nSize(buffer.GetCount())
+    CMemoryBlock(const void* pBlock, size_t nSize)
+        :m_pBlock(nullptr), m_nSize(nSize)
+    {
+        if(m_nSize > 0)
+        {
+            m_pBlock = malloc(m_nSize);
+            Checked::memcpy_s(m_pBlock, m_nSize, pBlock, nSize);
+        }
+    }
+
+    template<typename E>
+	CMemoryBlock(const CAtlArray<E>& buffer)
+		:m_pBlock(nullptr),m_nSize(buffer.GetCount()*sizeof(E))
 	{
 		if (m_nSize > 0)
 		{
-			m_pBlock = reinterpret_cast<BYTE*>(malloc(m_nSize));
-			Checked::memcpy_s(m_pBlock, m_nSize, buffer.GetData(), buffer.GetCount());
+			m_pBlock = malloc(m_nSize);
+			Checked::memcpy_s(m_pBlock, m_nSize, buffer.GetData(), m_nSize);
 		}
 	}
 
@@ -36,7 +45,7 @@ public:
 	{
 		if (m_nSize > 0)
 		{
-			m_pBlock = reinterpret_cast<BYTE*>(malloc(m_nSize));
+			m_pBlock = malloc(m_nSize);
 			Checked::memcpy_s(m_pBlock, m_nSize, memory_block.GetData(), m_nSize);
 		}
 	}
@@ -46,17 +55,33 @@ public:
 		free(m_pBlock);
 	}
 
+    void Detach(void*& pBlock, size_t& nSize)
+    {
+        pBlock = m_pBlock;
+        nSize = m_nSize;
+
+        m_pBlock = nullptr;
+        m_nSize = 0;
+    }
+
+    void Attach(void* pBlock, size_t nSize)
+    {
+        Empty();
+        m_pBlock = pBlock;
+        m_nSize = nSize;
+    }
+
 	CMemoryBlock& operator=(const CMemoryBlock& memory_block)
 	{
 		m_nSize = memory_block.GetSize();
 		if (m_pBlock == nullptr)
 		{
-			m_pBlock = reinterpret_cast<BYTE*>(malloc(m_nSize));
+			m_pBlock = malloc(m_nSize);
 			Checked::memcpy_s(m_pBlock, m_nSize, memory_block.GetData(), m_nSize);
 		}
 		else
 		{
-			BYTE* pNewBlock = reinterpret_cast<BYTE*>(realloc(m_pBlock, m_nSize));
+			void* pNewBlock = realloc(m_pBlock, m_nSize);
 			Checked::memcpy_s(pNewBlock, m_nSize, memory_block.GetData(), m_nSize);
 			m_pBlock = pNewBlock;
 		}
@@ -66,11 +91,8 @@ public:
 
 	void Empty()
 	{
-		if (m_pBlock != nullptr)
-		{
-			free(m_pBlock);
-			m_pBlock = nullptr;
-		}
+		free(m_pBlock);
+		m_pBlock = nullptr;
 		m_nSize = 0;
 	}
 
@@ -84,12 +106,12 @@ public:
 		return m_nSize;
 	}
 
-	const BYTE* GetData() const
+	const void* GetData() const
 	{
 		return m_pBlock;
 	}
 
-	void GetBuffer(Buffer& buffer)
+	void GetBuffer(CAtlArray<BYTE>& buffer)
 	{
 		if (m_nSize > 0)
 		{
@@ -104,12 +126,14 @@ public:
 
 	private:
 
-		BYTE* m_pBlock;
+		void* m_pBlock;
 		size_t m_nSize;
 };
 
 class CChunkedBuffer
 {
+    typedef CAtlArray<BYTE> Buffer;
+
 public:
 
 	CChunkedBuffer()

@@ -55,7 +55,7 @@ namespace
             class receiver :public pipe_server_basics::INotify
             {
             public:
-                virtual void OnConnect(pipe_server_basics::INSTANCENO instanceNo)
+                virtual void OnConnect(pipe_server_basics::INSTANCENO)
                 {}
 
                 virtual void OnMessage(pipe_server_basics::INSTANCENO instanceNo, const pipe_server_basics::Buffer& buffer)
@@ -63,7 +63,7 @@ namespace
                     msg_process::process_message(m_server, instanceNo, m_srv_handler, buffer);
                 }
 
-                virtual void OnDisconnect(pipe_server_basics::INSTANCENO instanceNo)
+                virtual void OnDisconnect(pipe_server_basics::INSTANCENO, bool)
                 {}
 
             protected:

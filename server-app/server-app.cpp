@@ -66,9 +66,9 @@ namespace
 			}
         }
 
-        virtual void OnDisconnect(pipe_server_basics::INSTANCENO instanceNo)
+        virtual void OnDisconnect(pipe_server_basics::INSTANCENO instanceNo, bool fOrigin)
         {
-            _tprintf(_T("msg(%I64i): disconnect\n"), instanceNo);
+            _tprintf(_T("msg(%I64i): disconnect(%s)\n"), instanceNo, fOrigin? _T("origin") : _T("answer"));
         }
 
 	protected:

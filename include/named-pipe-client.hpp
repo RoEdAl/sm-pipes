@@ -76,6 +76,23 @@ public:
 		set_event(m_evNewMsg);
 	}
 
+    void SendMessage(const void* pBlock, size_t nSize)
+    {
+        {
+            CMemoryBlock mb(pBlock, nSize);
+
+            CCriticalSectionLocker locker(m_cs);
+            POSITION pos = m_outputBuffers.AddTail();
+
+            void* _pBlock;
+            size_t _nSize;
+            mb.Detach(_pBlock, _nSize);
+
+            m_outputBuffers.GetAt(pos).Attach(_pBlock, _nSize);
+        }
+        set_event(m_evNewMsg);
+    }
+
 	const CString& GetPipeName() const
 	{
 		return m_sPipe;
@@ -95,8 +112,7 @@ public:
 			}
 			_ATLCATCH(e)
 			{
-				HRESULT hRes = e;
-				reset();
+				reset(!is_pipe_broken(e));
 
 				DWORD dwWait = ::WaitForSingleObject(m_evStop, CONNECT_TIMEOUT);
 				switch (dwWait)
@@ -169,10 +185,10 @@ private:
 			}
 		}
 
-		reset();
+		reset(true);
 	}
 
-	void reset()
+	void reset(bool fOrigin)
 	{
 		using namespace hres_routines;
 
@@ -221,7 +237,7 @@ private:
 			}
 
 			m_pipe.Close();
-			m_notifier.OnDisconnect();
+			m_notifier.OnDisconnect(fOrigin);
 		}
 
 		reset_event(m_evRead);
@@ -412,6 +428,19 @@ private:
 		m_notifier.OnMessage(buffer);
 		m_inputBuffer.Clear();
 	}
+
+    static bool is_pipe_broken(HRESULT hRes)
+    {
+        switch(hRes)
+        {
+            case __HRESULT_FROM_WIN32(ERROR_BROKEN_PIPE):
+            case __HRESULT_FROM_WIN32(ERROR_PIPE_NOT_CONNECTED):
+            return true;
+
+            default:
+            return false;
+        }
+    }
 };
 
 #endif

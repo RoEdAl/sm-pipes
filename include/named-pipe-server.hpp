@@ -130,6 +130,18 @@ public:
 		return false;
 	}
 
+    bool SendMessage(INSTANCENO instanceNo, const void* pBlock, size_t nSize)
+    {
+        for(size_t i = 0; i < INSTANCES; ++i)
+        {
+            if(m_aInstance[i]->GetInstanceNo() != instanceNo) continue;
+            m_aInstance[i]->SendMessage(pBlock, nSize);
+            return true;
+        }
+
+        return false;
+    }
+
     void ThreadProc()
     {
 		using namespace hres_routines;
@@ -224,7 +236,7 @@ private:
 			ATLASSERT(dwWait >= WAIT_OBJECT_0 && dwWait < (WAIT_OBJECT_0 + dwCnt));
 		}
 
-        for_each_instance([](auto& instance) {instance.FinishCancelingAndDisconnect();});
+        for_each_instance([](auto& instance) {instance.FinishCancelingAndDisconnect(true);});
     }
 
     class CPipeInstance
@@ -260,6 +272,23 @@ private:
 			}
 			set_event(m_evNewMsg);
 		}
+
+        void SendMessage(const void* pBlock, size_t nSize)
+        {
+            {
+                CMemoryBlock mb(pBlock, nSize);
+
+                CCriticalSectionLocker locker(m_cs);
+                POSITION pos = m_outputBuffers.AddTail();
+
+                void* _pBlock;
+                size_t _nSize;
+                mb.Detach(_pBlock, _nSize);
+
+                m_outputBuffers.GetAt(pos).Attach(_pBlock, _nSize);
+            }
+            set_event(m_evNewMsg);
+        }
 
         void ConnectToNewClient()
         {
@@ -300,7 +329,7 @@ private:
 				ATLASSERT(dwWait >= WAIT_OBJECT_0 && dwWait < (WAIT_OBJECT_0 + dwCnt));
 			}
 
-			FinishCancelingAndDisconnect();
+			FinishCancelingAndDisconnect(false);
 
             m_eState = INSTANCE_STATE_CONNECTING;
             m_instanceNo = newInstanceNo;
@@ -345,7 +374,7 @@ private:
 			return nullptr;
 		}
 
-        HRESULT FinishCancelingAndDisconnect()
+        HRESULT FinishCancelingAndDisconnect(bool fOrigin)
         {
 			using namespace hres_routines;
 
@@ -373,7 +402,7 @@ private:
 			if (m_eState != INSTANCE_STATE_CONNECTING)
 			{
 				hRes = m_pipeInstance.DisconnectNamedPipe();
-				m_notifier.OnDisconnect(m_instanceNo);
+				m_notifier.OnDisconnect(m_instanceNo, fOrigin);
 			}
 
             return hRes;
