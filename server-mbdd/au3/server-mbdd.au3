@@ -10,8 +10,8 @@
 #include <GuiListView.au3>
 
 Dim Const $DLL_NAME = "SMServerMbdd.dll"
-Dim Const $APP_TITLE = "SMSrvMbdd Host [" & (@AutoItX64? "64bit]" : "32bit]")
-Dim Const $INT_TYPE = @AutoItX64? "int64" : "int"
+Dim Const $APP_TITLE = "SMSrvMbdd Host [" & (@AutoItX64 ? "64bit]" : "32bit]")
+Dim Const $INT_TYPE = @AutoItX64 ? "int64" : "int"
 
 Dim $handler = 0
 Dim $srvHandle = 0
@@ -40,7 +40,7 @@ $DummyUrlMsg = GUICtrlCreateDummy()
 
 Func add_msg($field, $val)
 	Local $idx = _GUICtrlListView_AddItem($MsgListView, $field)
-	_GUICtrlListView_AddSubItem($MsgListView, $idx, $val, 1 )
+	_GUICtrlListView_AddSubItem($MsgListView, $idx, $val, 1)
 	_GUICtrlListView_SetItemSelected($MsgListView, $idx)
 	_GUICtrlListView_EnsureVisible($MsgListView, $idx)
 EndFunc   ;==>add_msg
@@ -54,25 +54,25 @@ add_msg($DLL_NAME, FileGetVersion($DLL_NAME))
 add_msg("SMSrvApiLevel", $apiLevel[0])
 
 update_buttons_state(False)
-GUICtrlSetState($CheckReply, $doReply? $GUI_CHECKED : $GUI_UNCHECKED)
+GUICtrlSetState($CheckReply, $doReply ? $GUI_CHECKED : $GUI_UNCHECKED)
 GUISetState(@SW_SHOW)
 
 Func my_primitive_handler($cmd, $val)
 	If $cmd = 1 Then
 		GUICtrlSendToDummy($DummyUrlMsg, $val)
 	EndIf
-    Return $doReply? 0 : -2
-EndFunc   ;==>my_callback
+	Return $doReply ? 0 : -2
+EndFunc   ;==>my_primitive_handler
 
 Func update_buttons_state($connected)
-    if $connected Then
-        GUICtrlSetState($ButtonUnregister, BitOR($GUI_ENABLE, $GUI_FOCUS))
+	If $connected Then
+		GUICtrlSetState($ButtonUnregister, BitOR($GUI_ENABLE, $GUI_FOCUS))
 		GUICtrlSetState($ButtonRegister, $GUI_DISABLE)
-    Else
+	Else
 		GUICtrlSetState($ButtonRegister, BitOR($GUI_ENABLE, $GUI_FOCUS))
 		GUICtrlSetState($ButtonUnregister, $GUI_DISABLE)
-    EndIf
-EndFunc
+	EndIf
+EndFunc   ;==>update_buttons_state
 
 Func register()
 	If $handler Then Return
@@ -118,7 +118,7 @@ While True
 			unregister()
 
 		Case $CheckReply
-			$doReply = (GUICtrlRead($CheckReply) = $GUI_CHECKED)? True : False
+			$doReply = (GUICtrlRead($CheckReply) = $GUI_CHECKED) ? True : False
 
 		Case $ButtonClear
 			_GUICtrlListView_DeleteAllItems($MsgListView)

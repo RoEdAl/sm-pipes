@@ -93,3 +93,6 @@ ADD_SUBDIRECTORY(server-app)
 ADD_SUBDIRECTORY(server-mbdd)
 ADD_SUBDIRECTORY(client-app)
 ADD_SUBDIRECTORY(native-msg-proxy)
+ADD_SUBDIRECTORY(include)
+ADD_SUBDIRECTORY(extensions)
+
