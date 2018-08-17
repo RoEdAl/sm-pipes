@@ -57,7 +57,7 @@ update_buttons_state(False)
 GUICtrlSetState($CheckReply, $doReply ? $GUI_CHECKED : $GUI_UNCHECKED)
 GUISetState(@SW_SHOW)
 
-Func my_primitive_handler($cmd, $val)
+Volatile Func my_primitive_handler($cmd, $val)
 	If $cmd = 1 Then
 		GUICtrlSendToDummy($DummyUrlMsg, $val)
 	EndIf
