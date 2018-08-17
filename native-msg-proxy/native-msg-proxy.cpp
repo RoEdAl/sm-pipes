@@ -231,7 +231,7 @@ int _tmain(int argc, TCHAR* argv[])
 			continue;
 		}
 
-		Printf(_T("> message received, size=%d\n"), nSize);
+		Printf(_T("> size=%d\n"), nSize);
 
 		// just send received message
 		client.SendMessage(buffer);
