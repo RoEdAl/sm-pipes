@@ -4,7 +4,10 @@
   "name": "Send to SuperMemo",
   "version": "1.0",
   "icons": {
-    "48": "icons/message.svg"
+    "16": "icons/sm-16.png",
+    "32": "icons/sm-32.png",
+    "48": "icons/sm-48.png",
+    "64": "icons/sm-64.png"
   },
 
   "applications": {
@@ -20,9 +23,17 @@
 
   "browser_action": {
     "browser_style": true,
-    "default_icon" : "icons/message.svg",
-    "default_title": "Send to SuperMemo"
+    "default_icon" : {
+      "16": "icons/disabled/sm-16.png",
+      "32": "icons/disabled/sm-32.png",
+      "48": "icons/disabled/sm-48.png",
+      "64": "icons/disabled/sm-64.png"
+    },
+    "default_title": "Trying to connect to SuperMemo…"
   },
   
-  "permissions": ["nativeMessaging", "activeTab"]
+  "permissions": [
+    "nativeMessaging",
+    "activeTab"
+  ]
 }
