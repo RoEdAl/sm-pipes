@@ -3,5 +3,5 @@
     "description": "Send to SuperMemo native messaging app",
     "path": "$APPBIN$",
     "type": "stdio",
-    "allowed_extensions": [ "smpipes@supermemory.com" ]
+    "allowed_extensions": [ "{7417b4bb-d5d6-46f6-ac95-e1879343cd47}" ]
 }
