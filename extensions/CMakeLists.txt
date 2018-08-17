@@ -2,5 +2,5 @@
 # extensions
 #
 
-INSTALL(DIRECTORY google-chrome DESTINATION extensions)
-INSTALL(DIRECTORY mozilla DESTINATION extensions)
+INSTALL(DIRECTORY google-chrome DESTINATION extensions PATTERN "LICENSE.txt" EXCLUDE)
+INSTALL(DIRECTORY mozilla DESTINATION extensions PATTERN "LICENSE.txt" EXCLUDE)
