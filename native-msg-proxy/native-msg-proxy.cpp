@@ -26,26 +26,59 @@ namespace
 	const char JSON_CONNECTED[] = "{\"ntrnl\":\"connected\"}";
 	const char JSON_DISCONNECTED[] = "{\"ntrnl\":\"disconnected\"}";
 
-	void push_size(size_t size)
+	size_t push_size(size_t size)
 	{
 		UINT32 nSize = static_cast<UINT32>(size);
-		fwrite(&nSize, sizeof(nSize), 1, stdout);
+		return fwrite(&nSize, sizeof(nSize), 1, stdout);
 	}
 
 	template<size_t S>
-	void push_size()
+	size_t push_size()
 	{
 		UINT32 nSize = S;
-		fwrite(&nSize, sizeof(nSize), 1, stdout);
+		return fwrite(&nSize, sizeof(nSize), 1, stdout);
 	}
 
 	template<size_t S>
 	void push_static_msg(const char (&str)[S])
 	{ // do not send tailing zero character
-		push_size<S-1>();
-		fwrite(str, S-1, 1, stdout);
-		fflush(stdout);
+        if(push_size<S - 1>() > 0)
+        {
+            if(fwrite(str, S - 1, 1, stdout) > 0)
+            {
+                fflush(stdout);
+            }
+            else
+            {
+                Printf(_T("! could not push entire message\n"));
+            }
+        }
+        else
+        {
+            Printf(_T("! could not push message size\n"));
+        }
 	}
+
+    template<typename E, typename ETraits>
+    void push_msg(const CAtlArray<E, ETraits>& buffer)
+    {
+        size_t nSize = buffer.GetCount() * sizeof(E);
+        if(push_size(nSize) > 0)
+        {
+            if(fwrite(buffer.GetData(), nSize, 1, stdout) > 0)
+            {
+                fflush(stdout);
+            }
+            else
+            {
+                Printf(_T("! could not push entire message\n"));
+            }
+        }
+        else
+        {
+            Printf(_T("! could not push message size\n"));
+        }
+    }
 
 	class ClientMessages :public pipe_client_basics::INotify
 	{
@@ -60,10 +93,7 @@ namespace
 		{
 			if (buffer.GetCount() > 0)
 			{
-				size_t nSize = buffer.GetCount();
-				push_size(nSize);
-				fwrite(buffer.GetData(), nSize, 1, stdout);
-				fflush(stdout);
+                push_msg(buffer);
 			}
 
 			Printf(_T("< size=%zi\n"), buffer.GetCount());
