@@ -5,11 +5,11 @@
 let
 
 message_handler = (response) => {
-  console.log("sm-pipes: Received: " + JSON.stringify(response));
+  console.log("sm-pipes < " + JSON.stringify(response));
 },
 
 disconnect_handler = () => {
-  console.log("sm-pipes: Disconnected");
+  console.log("sm-pipes : disconnected");
 },
 
 connect_native = function (name, on_message, on_disconnect) {
@@ -26,7 +26,7 @@ send_msg = (cmd, val) => {
         "cmd": cmd,
         "val": val
     };
-    console.log("sm-pipes: Sending: " + JSON.stringify(msg));
+    console.log("sm-pipes > " + JSON.stringify(msg));
     port.postMessage(msg);
 };
 
