@@ -20,6 +20,11 @@ disabled_icon_set = {
     64: "icons/disabled/sm-64.png"
 };
 
+/*
+    Disable button at startup.
+*/
+browser.browserAction.disable();
+
 let
 
 update_active_tab = (connected) => {
