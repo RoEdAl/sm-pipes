@@ -55,6 +55,7 @@ add_msg("SMSrvApiLevel", $apiLevel[0])
 
 update_buttons_state(False)
 GUICtrlSetState($CheckReply, $doReply ? $GUI_CHECKED : $GUI_UNCHECKED)
+GUISetIcon($DLL_NAME)
 GUISetState(@SW_SHOW)
 
 Volatile Func my_primitive_handler($cmd, $val)

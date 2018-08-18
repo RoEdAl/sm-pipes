@@ -14,7 +14,7 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 	Icon with lowest ID value placed first to ensure application icon
 	remains consistent on all systems.
 */
-//0                       ICON                    "../gui/icons/cd_mka.ico"
+0 ICON "../graphics/sm.ico"
 
 IDR_JSON_MANIFEST_GOOGLE         JSON                    "native-msg-proxy-google.json"
 IDR_JSON_MANIFEST_MOZILLA        JSON                    "native-msg-proxy-mozilla.json"
@@ -114,7 +114,7 @@ BEGIN
         BEGIN
             VALUE "Comments", "This is very long comment."
             VALUE "CompanyName", "Who Knows - xxx@yyy.zz"
-            VALUE "FileDescription", "This is short description."
+            VALUE "FileDescription", "Native messaging proxy for SuperMemo"
             VALUE "FileVersion", SMPIPES_VERSION_STR
             VALUE "InternalName", "native-msg-proxy"
             VALUE "LegalCopyright", "Simplified BSD License - http://www.opensource.org/licenses/bsd-license.html"
