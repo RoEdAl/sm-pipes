@@ -40,12 +40,16 @@ update_active_tab = (connected) => {
 message_handler = (response) => {
     console.log("sm-pipes < " + JSON.stringify(response));
 
-    if  (response.hasOwnProperty( 'ntrnl' )) {
-        if (response.ntrnl === 'connected') {
-            update_active_tab(true);
-        } else if (response.ntrnl === 'disconnected') {
-            update_active_tab(false);
-        }
+    if (!response.hasOwnProperty("ntrnl") || typeof response.ntrnl !== "string") return;
+
+    switch (response.ntrnl) {
+        case "connected":
+        update_active_tab(true);
+        break;
+
+        case "disconnected":
+        update_active_tab(false);
+        break;
     }
 },
 
