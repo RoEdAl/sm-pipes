@@ -1,11 +1,14 @@
 //
+// Mozilla
+//
 // background.js
 //
 
 const
 
 send_to_sm = "Send to SuperMemo",
-cannot_send_to_sm = "Trying to connect to SuperMemo…",
+cannot_send_to_sm = "Connecting to SuperMemo…",
+permanently_disconnected_from_sm = "Permanently disconnected from SuperMemo",
 
 enabled_icon_set = {
     16: "icons/sm-16.png",
@@ -27,15 +30,15 @@ browser.browserAction.disable();
 
 let
 
-update_active_tab = (connected) => {
+update_active_tab = (connected, title) => {
     if (connected) {
         browser.browserAction.enable();
         browser.browserAction.setIcon({path: enabled_icon_set});
-        browser.browserAction.setTitle({title: send_to_sm});
+        browser.browserAction.setTitle({"title": title ? title : send_to_sm});
     } else {
         browser.browserAction.disable();
         browser.browserAction.setIcon({path: disabled_icon_set});
-        browser.browserAction.setTitle({title: cannot_send_to_sm});
+        browser.browserAction.setTitle({"title": title ? title : cannot_send_to_sm});
     }
 },
 
@@ -57,6 +60,8 @@ message_handler = (response) => {
 
 disconnect_handler = () => {
     console.log("sm-pipes : disconnected");
+
+    update_active_tab(false, permanently_disconnected_from_sm)
 },
 
 connect_native = function (name, on_message, on_disconnect) {
