@@ -1,9 +1,9 @@
 {
-  "name": "$APPNAME$",
-  "description": "Send to SuperMemo native messaging app",
-  "path": "$APPBIN$",
-  "type": "stdio",
+    "name": "$APPNAME$",
+    "description": "Send to SuperMemo native messaging app",
+    "path": "$APPBIN$",
+    "type": "stdio",
     "allowed_origins": [
-        "chrome-extension://nbjjnmcmlcgdfjgmgfkhjilbalibbkmp/"
+        "chrome-extension://fkapleodpppnnjgiapfkdahklkgaoekl/"
     ]
 }
