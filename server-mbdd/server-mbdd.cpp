@@ -40,6 +40,11 @@ namespace
             {}
 #endif
 
+			bool IsValid() const
+			{
+				return m_server.IsValid();
+			}
+
             HRESULT Run()
             {
                 return m_server.Run();
@@ -100,6 +105,13 @@ extern "C" void* __stdcall SMSrvRegister(SM_SRV_HANDLER handler)
     _ATLTRY
     {
         pInstance = new svr_instance(handler);
+
+		if (!pInstance->IsValid())
+		{
+			delete pInstance;
+			return nullptr;
+		}
+
         HRESULT hRes = pInstance->Run();
 
         if(FAILED(hRes))
