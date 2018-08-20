@@ -28,9 +28,9 @@ namespace
 	}
 
 #ifdef USE_LOGON_SESSION
-    typedef logon_sesssion_security_policy default_security_policy;
+	typedef named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, logon_sesssion_security_policy> server_type;
 #else
-    typedef no_security_policy default_security_policy;
+	typedef named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, no_security_policy> server_type;
 #endif
 
     class ServerMessages :public pipe_server_basics::INotify
@@ -81,7 +81,7 @@ namespace
 
 	protected:
 
-		named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy>* m_pServer;
+		server_type* m_pServer;
 
 	public:
 
@@ -89,7 +89,7 @@ namespace
 			:m_pServer(nullptr)
 		{}
 
-		void SetServer(named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy>& server)
+		void SetServer(server_type& server)
 		{
 			m_pServer = &server;
 		}
@@ -102,10 +102,10 @@ int main()
 	
     ServerMessages serverMessages;
 #ifdef USE_LOGON_SESSION
-    default_security_policy security_policy;
-    named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy> server(security_policy, serverMessages);
+	logon_sesssion_security_policy security_policy;
+    server_type server(security_policy, serverMessages);
 #else
-    named_pipe_server<2, BUFSIZE, default_security_policy> server(serverMessages);
+    server_type server(serverMessages);
 #endif
 
 	if (!server.IsValid())

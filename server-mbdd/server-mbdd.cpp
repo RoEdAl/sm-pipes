@@ -17,12 +17,12 @@ namespace
 #include <msg-process.hpp>
 
 #ifdef USE_LOGON_SESSION
-    typedef logon_sesssion_security_policy default_security_policy;
+	typedef named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, logon_sesssion_security_policy> np_server;
 #else
-    typedef no_security_policy default_security_policy;
+	typedef named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, no_security_policy> np_server;
 #endif
 
-    typedef named_pipe_server<named_pipes_defaults::INSTANCES, named_pipes_defaults::BUFFER_SIZE, default_security_policy> np_server;
+
 
     class svr_instance
     {
@@ -36,7 +36,7 @@ namespace
 #else
             svr_instance(SM_SRV_HANDLER svr_handler)
                 : m_receiver(m_server, svr_handler),
-                  m_server(m_receiver),
+                  m_server(m_receiver)
             {}
 #endif
 
@@ -86,7 +86,7 @@ namespace
     protected:
 
 #ifdef USE_LOGON_SESSION
-        default_security_policy m_security_policy;
+		logon_sesssion_security_policy m_security_policy;
 #endif
         receiver m_receiver;
         np_server m_server;
