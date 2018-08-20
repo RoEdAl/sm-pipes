@@ -64,7 +64,7 @@ disconnect_handler = () => {
     update_active_tab(false, permanently_disconnected_from_sm)
 },
 
-connect_native = function (name, on_message, on_disconnect) {
+connect_native = (name, on_message, on_disconnect) => {
     let port = browser.runtime.connectNative(name);
     port.onMessage.addListener(on_message);
     port.onDisconnect.addListener(on_disconnect);
