@@ -89,7 +89,7 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}/include")
 ADD_DEFINITIONS(-DUNICODE -D_UNICODE)
 
 # subdirectories
-ADD_SUBDIRECTORY(server-app)
+ADD_SUBDIRECTORY(server-echo-app)
 ADD_SUBDIRECTORY(server-mbdd)
 ADD_SUBDIRECTORY(client-app)
 ADD_SUBDIRECTORY(native-msg-proxy)

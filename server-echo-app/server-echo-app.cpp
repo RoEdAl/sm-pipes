@@ -1,5 +1,5 @@
 //
-// server-app.cpp
+// server-echo-app.cpp
 //
 
 #include <targetver.h>
@@ -20,6 +20,13 @@ namespace
 #include <security-policy.hpp>
 #include <named-pipe-defaults.hpp>
 
+	template<size_t S, typename... T>
+	void Printf(const TCHAR(&fmt)[S], T... args)
+	{
+		_fputts(_T("echo-server "), stdout);
+		_ftprintf(stdout, fmt, args...);
+	}
+
 #ifdef USE_LOGON_SESSION
     typedef logon_sesssion_security_policy default_security_policy;
 #else
@@ -31,12 +38,12 @@ namespace
     public:
         virtual void OnConnect(pipe_server_basics::INSTANCENO instanceNo)
         {
-            _tprintf(_T("msg(%I64i): connect\n"), instanceNo);
+			Printf(_T(": msg(%I64i) - connect\n"), instanceNo);
         }
 
         virtual void OnMessage(pipe_server_basics::INSTANCENO instanceNo, const pipe_server_basics::Buffer& buffer)
         {
-            _tprintf(_T("msg(%I64i): message size=%zi\n"), instanceNo, buffer.GetCount());
+			Printf(_T("< msg(%I64i) - size=%zi\n"), instanceNo, buffer.GetCount());
 			if (m_pServer != nullptr)
 			{
 				Document msg;
@@ -57,10 +64,11 @@ namespace
 					Checked::memcpy_s(buf_reply.GetData(), buf_reply.GetCount(), strm.GetString(), strm.GetSize());
 
 					m_pServer->SendMessage(instanceNo, buf_reply);
+					Printf(_T("> echo(%I64i) - size=%zi\n"), instanceNo, buf_reply.GetCount());
 				}
 				else
 				{
-					_tprintf(_T("msg(%I64i): could not parse message\n"), instanceNo);
+					Printf(_T("! msg(%I64i) - could not parse message\n"), instanceNo);
 					m_pServer->SendMessage(instanceNo, buffer);
 				}
 			}
@@ -68,7 +76,7 @@ namespace
 
         virtual void OnDisconnect(pipe_server_basics::INSTANCENO instanceNo, bool fOrigin)
         {
-            _tprintf(_T("msg(%I64i): disconnect(%s)\n"), instanceNo, fOrigin? _T("origin") : _T("answer"));
+			Printf(_T(": msg(%I64i) - disconnect(%s)\n"), instanceNo, fOrigin? _T("origin") : _T("answer"));
         }
 
 	protected:
@@ -90,7 +98,7 @@ namespace
 
 int main()
 {
-	_tprintf(_T("server: version=%s\n"), _T(SMPIPES_VERSION_STR) );
+	Printf(_T(": version=%s\n"), _T(SMPIPES_VERSION_STR) );
 	
     ServerMessages serverMessages;
 #ifdef USE_LOGON_SESSION
@@ -102,19 +110,21 @@ int main()
 
 	if (!server.IsValid())
 	{
-		_tprintf(_T("server: invalid\n"));
+		Printf(_T("! invalid - could not initialize\n"));
 		return 1;
 	}
 
-	_tprintf(_T("server: pipe=%s\n"), (LPCTSTR)server.GetPipeName() );
+	Printf(_T(": pipe=%s\n"), (LPCTSTR)server.GetPipeName() );
+
 	serverMessages.SetServer(server);
-    server.Run();
+    HRESULT hRes = server.Run();
+	Printf(_T(": run hr=%08x\n"), hRes);
 
 	_gettch();
-	_tprintf(_T("server: stop\n"));
-    server.Stop();
+	Printf(_T(": stop\n"));
+    hRes = server.Stop();
 
 	_gettch();
-	_tprintf(_T("server: bye\n"));
-    return 0;
+	Printf(_T(": bye hr=%08x\n"), hRes);
+    return hRes;
 }
