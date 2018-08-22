@@ -128,4 +128,4 @@ protected:
 	}
 };
 
-#endif // _WORKER_THREAd_HPP_
+#endif // _WORKER_THREAD_HPP_
