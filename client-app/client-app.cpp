@@ -82,10 +82,7 @@ namespace
         json::Writer<json::StringBuffer> writer(strm);
         msg.Accept(writer);
 
-        pipe_client_basics::Buffer buf;
         size_t nBufferSize = strm.GetSize();
-        buf.SetCount(nBufferSize);
-        Checked::memcpy_s(buf.GetData(), nBufferSize, strm.GetString(), nBufferSize);
 
 		if (nBufferSize <= 512)
 		{
@@ -98,7 +95,7 @@ namespace
 		}
 		else
 		{
-			Printf(_T("> size=%zi\n"), buf.GetCount());
+			Printf(_T("> size=%zi\n"), nBufferSize);
 		}
 
         client.SendMessage(strm.GetString(), nBufferSize);
