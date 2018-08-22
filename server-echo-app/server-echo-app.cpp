@@ -96,7 +96,7 @@ namespace
     };
 }
 
-int main()
+int _tmain()
 {
 	Printf(_T(": version=%s\n"), _T(SMPIPES_VERSION_STR) );
 	
