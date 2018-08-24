@@ -22,6 +22,16 @@
         "scripts": [ "background.js" ]
     },
 
+    "content_scripts": [
+        {
+            "js": [ "content-script.js" ],
+            "matches": [ "*://*/*" ],
+            "match_about_blank": false,
+            "all_frames": false,
+            "run_at": "document_idle"
+        }
+    ],
+
     "browser_action": {
         "browser_style": true,
         "default_icon": {

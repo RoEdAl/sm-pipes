@@ -7,6 +7,9 @@
 const
 
     send_to_sm = "Send to SuperMemo",
+    send_img_to_sm = "Send image to SuperMemo",
+    send_link_to_sm = "Send link to SuperMemo",
+    send_page_to_sm = "Send page to SuperMemo",
     cannot_send_to_sm = "Connecting to SuperMemo…",
     permanently_disconnected_from_sm = "Permanently disconnected from SuperMemo",
 
@@ -30,6 +33,8 @@ browser.browserAction.disable();
 
 let
 
+    csPort = [],
+
     update_active_tab = (connected, title) => {
         if (connected) {
             browser.browserAction.enable();
@@ -38,13 +43,18 @@ let
 
             browser.contextMenus.create({
                 id: "send-image-to-supermemo",
-                title: "Send image to SuperMemo",
+                title: send_img_to_sm,
                 contexts: ["image"]
             });
             browser.contextMenus.create({
                 id: "send-link-to-supermemo",
-                title: "Send link to SuperMemo",
+                title: send_link_to_sm,
                 contexts: ["link"]
+            });
+            browser.contextMenus.create({
+                id: "send-page-to-supermemo",
+                title: send_page_to_sm,
+                contexts: ["page"]
             });
         } else {
             browser.contextMenus.removeAll().then(() => {
@@ -94,6 +104,35 @@ let
         let msg = { "cmd": cmd, "val": val };
         console.log("sm-pipes > " + JSON.stringify(msg));
         port.postMessage(msg);
+    },
+
+    on_content_script_message = (msg) => {
+        if (msg.hasOwnProperty("cmd") && msg.hasOwnProperty("val")) {
+            // TODO: modify message
+            console.log("sm-pipes > " + JSON.stringify(msg));
+            port.postMessage(msg);
+        } else {
+            console.log("sm-pipes ! " + JSON.stringify(msg));
+        }
+    },
+
+    cs_disconnected = (p) => {
+        if (p.name !== "supermemo-content-script") return;
+
+        console.log("sm-pipes : content-script disconnect " + p.sender.tab.id);
+        p.onMessage.removeListener(on_content_script_message);
+        p.onDisconnect.removeListener(cs_disconnected);
+        csPort = csPort.filter((e, idx) => idx !== p.sender.tab.id);
+        console.log("sm-pipes : content-script disconnect length " + csPort.length);
+    },
+
+    cs_connected = (p) => {
+        if (p.name !== "supermemo-content-script") return;
+
+        console.log("sm-pipes : content-script connect " + p.sender.tab.id);
+        csPort[p.sender.tab.id] = p;
+        p.onMessage.addListener(on_content_script_message);
+        p.onDisconnect.addListener(cs_disconnected);
     },
 
     download_binary = (url, image_loaded) => {
@@ -160,8 +199,15 @@ let
                 }
                 send_msg("lnk", sval);
                 break;
+
+            case "send-page-to-supermemo":
+                if (csPort[tab.id]) {
+                    csPort[tab.id].postMessage({ "cmd": "page" });
+                }
+                break;
         }
     };
 
+browser.runtime.onConnect.addListener(cs_connected);
 browser.browserAction.onClicked.addListener(on_button_clicked);
 browser.contextMenus.onClicked.addListener(on_context_menu);

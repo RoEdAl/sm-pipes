@@ -6,6 +6,7 @@ ADD_CUSTOM_TARGET(mozilla
     SOURCES
     manifest.json
     background.js
+	content-script.js
 )
 
 SET_TARGET_PROPERTIES(mozilla
