@@ -7,9 +7,6 @@
 const
 
     send_to_sm = "Send to SuperMemo",
-    send_img_to_sm = "Send image to SuperMemo",
-    send_link_to_sm = "Send link to SuperMemo",
-    send_page_to_sm = "Send page to SuperMemo",
     cannot_send_to_sm = "Connecting to SuperMemo…",
     permanently_disconnected_from_sm = "Permanently disconnected from SuperMemo",
 
@@ -24,7 +21,30 @@ const
         32: "icons/disabled/sm-32.png",
         48: "icons/disabled/sm-48.png",
         64: "icons/disabled/sm-64.png"
-    };
+    },
+
+    menu_items = [
+        {
+            id: "send-image-to-supermemo",
+            title: "Send image to SuperMemo",
+            contexts: ["image"]
+        },
+        {
+            id: "send-link-to-supermemo",
+            title: "Send link to SuperMemo",
+            contexts: ["link"]
+        },
+        {
+            id: "send-page-to-supermemo",
+            title: "Send page to SuperMemo",
+            contexts: ["page"]
+        },
+        {
+            id: "send-selection-to-supermemo",
+            title: "Send selection to SuperMemo",
+            contexts: ["selection"]
+        }
+    ];
 
 /*
     Disable button at startup.
@@ -40,22 +60,7 @@ let
             chrome.browserAction.enable();
             chrome.browserAction.setIcon({ path: enabled_icon_set });
             chrome.browserAction.setTitle({ title: title ? title : send_to_sm });
-
-            chrome.contextMenus.create({
-                id: "send-image-to-supermemo",
-                title: send_img_to_sm,
-                contexts: ["image"]
-            });
-            chrome.contextMenus.create({
-                id: "send-link-to-supermemo",
-                title: send_link_to_sm,
-                contexts: ["link"]
-            });
-            chrome.contextMenus.create({
-                id: "send-page-to-supermemo",
-                title: send_page_to_sm,
-                contexts: ["page"]
-            });
+            menu_items.forEach((e) => chrome.contextMenus.create(e));
         } else {
             chrome.contextMenus.removeAll(() => {
                 chrome.browserAction.disable();
@@ -106,30 +111,29 @@ let
         port.postMessage(msg);
     },
 
-    on_content_script_message = (msg) => {
+    on_content_script_message = (msg, p) => {
         if (msg.hasOwnProperty("cmd") && msg.hasOwnProperty("val")) {
             // TODO: modify message
             console.log("sm-pipes > " + JSON.stringify(msg));
             port.postMessage(msg);
         } else {
-            console.log("sm-pipes ! " + JSON.stringify(msg));
+            console.log("sm-pipes ! " + JSON.stringify(msg) + " TAB:" + p.sender.tab.id);
         }
     },
 
     cs_disconnected = (p) => {
         if (p.name !== "supermemo-content-script") return;
 
-        console.log("sm-pipes : content-script disconnect " + p.sender.tab.id);
+        console.log("sm-pipes : content-script disconnect TAB:" + p.sender.tab.id);
         p.onMessage.removeListener(on_content_script_message);
         p.onDisconnect.removeListener(cs_disconnected);
         csPort = csPort.filter((e, idx) => idx !== p.sender.tab.id);
-        console.log("sm-pipes : content-script disconnect length " + csPort.length);
     },
 
     cs_connected = (p) => {
         if (p.name !== "supermemo-content-script") return;
 
-        console.log("sm-pipes : content-script connect " + p.sender.tab.id);
+        console.log("sm-pipes : content-script connect TAB:" + p.sender.tab.id);
         csPort[p.sender.tab.id] = p;
         p.onMessage.addListener(on_content_script_message);
         p.onDisconnect.addListener(cs_disconnected);
@@ -202,7 +206,13 @@ let
 
             case "send-page-to-supermemo":
                 if (csPort[tab.id]) {
-                    csPort[tab.id].postMessage({ "cmd": "page" });
+                    csPort[tab.id].postMessage({ cmd: "page" });
+                }
+                break;
+
+            case "send-selection-to-supermemo":
+                if (csPort[tab.id]) {
+                    csPort[tab.id].postMessage({ cmd: "selection", selection_text: info.selectionText });
                 }
                 break;
         }
