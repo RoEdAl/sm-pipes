@@ -202,6 +202,7 @@ let
                     sval["tab_title"] = tab.title;
                 }
                 send_msg("lnk", sval);
+                send_msg("url", info.linkUrl); // backward-compatible message
                 break;
 
             case "send-page-to-supermemo":
