@@ -13,6 +13,7 @@ SET_SOURCE_FILES_PROPERTIES(au3/server-mbdd.au3 PROPERTIES HEADER_FILE_ONLY TRUE
 
 ADD_LIBRARY(SMServerMbdd SHARED
 	server-mbdd.cpp
+	str-encode.cpp
 	server-mbdd.rc resource.h
 	server-mbdd.def
 	${PROJECT_PUBLIC_HEADER_FILES}

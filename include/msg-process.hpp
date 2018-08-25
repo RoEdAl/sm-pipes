@@ -33,6 +33,31 @@ namespace msg_process
         return false;
     }
 
+    template<typename T, size_t S>
+    bool get_string_val(const json::GenericValue<T>& obj, const char(&key)[S], const char*& pStr, size_t& nStrLen)
+    {
+        if(obj.HasMember(key))
+        {
+            const json::Value& val = obj[key];
+            if(val.IsString())
+            {
+                if(val.GetStringLength() > 0)
+                {
+                    pStr = val.GetString();
+                    nStrLen = val.GetStringLength();
+                }
+                else
+                {
+                    pStr = nullptr;
+                    nStrLen = 0;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     template<typename T>
     bool get_msg_cmd(const json::GenericDocument<T>& msg, CString& cmd)
     {
@@ -77,11 +102,26 @@ namespace msg_process
         // SM_SRV_CMD_URL
         if(!sCmd.CompareNoCase(_T("url")))
         {
-            CString sUrl;
-            f = get_msg_string_val(msg, sUrl);
-            if(!f || sUrl.IsEmpty()) return;
+            const char* pUrl;
+            size_t nUrlSize;
 
-            nRes = srv_handler(SM_SRV_CMD_URL, const_cast<LPTSTR>((LPCTSTR)sUrl));
+            f = get_string_val(msg, "val", pUrl, nUrlSize);
+            if(!f || nUrlSize == 0) return;
+
+            size_t nStructSize = sizeof(SM_SRV_URL_STRUCT) + nUrlSize + 1;
+            CAtlArray<BYTE> buffer;
+            buffer.SetCount(nStructSize);
+            SM_SRV_URL_STRUCT* pStruct = reinterpret_cast<SM_SRV_URL_STRUCT*>(buffer.GetData());
+            pStruct->base.cmd = SM_SRV_CMD_URL;
+            pStruct->base.structSize = static_cast<int>(nStructSize);
+            pStruct->urlOffset = sizeof(SM_SRV_URL_STRUCT);
+            pStruct->urlSize = static_cast<int>(nUrlSize);
+            char* pBuf = reinterpret_cast<char*>(pStruct);
+            pBuf += sizeof(SM_SRV_URL_STRUCT);
+            Checked::memcpy_s(pBuf, nUrlSize, pUrl, nUrlSize);
+            pBuf[nUrlSize] = '\0';
+            nRes = srv_handler(&pStruct->base);
+
             send_message_to_sender(server, instanceNo, msg, nRes);
         }
     }

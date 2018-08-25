@@ -35,15 +35,33 @@ extern "C" {
 #define SM_SRV_RPLY_NOREPLY	(-2)
 
 /*
+    SM_SRV_STRUCT - base struct
+*/
+typedef struct _SM_SRV_STRUCT
+{
+    int cmd;        // command
+    int structSize; // whole structure size
+} SM_SRV_STRUCT;
+
+/*
+    SM_SRV_URL_STRUCT
+
+    Struct for SM_SRV_CMD_URL command.
+*/
+typedef struct _SM_SRV_URL_STRUCT
+{
+    SM_SRV_STRUCT base; // base.cmd == SM_SRV_CMD_URL
+
+    int urlOffset;  // offset of null-terminated UTF-8 encoded string
+    int urlSize;    // number of characters of string pointed by `urlOffset` excluding terminating zero
+} SM_SRV_URL_STRUCT;
+
+/*
     SM_SRV_HANDLER - user-specified handler function.
     
-    `cmd` - command
-    
-        `SM_SRV_CMD_...`
-    
-    `val` - meaning of this pointer depends on `cmd` value
+    `smStruct` - meaning of this pointer depends on `smStruct->cmd` value
 
-        - For `cmd==SM_SRV_CMD_URL` this is null-terminated, UTF-16 encoded string.
+        - For `smStruct->cmd==SM_SRV_CMD_URL` this is pointer to SM_SRV_URL_STRUCT.
     
     return value:
     
@@ -57,11 +75,28 @@ extern "C" {
     Notes:
     
     - Hadler will be called from worker thread created by `SMSrvRegister` function.
-    - `val` should be considered as read-only pointer.
-    - `val` should be considered as valid pointer during handler's call only.
+    - `smStruct` should be considered as read-only pointer.
+    - `smStruct` should be considered as valid pointer during handler's call only.
     - You should avoid lengthy operations in handler function.
 */
-typedef int (__stdcall *SM_SRV_HANDLER)(int cmd, void* val);
+typedef int (__stdcall *SM_SRV_HANDLER)(SM_SRV_STRUCT* smStruct);
+
+/*
+    SMSrvGetWideString - conversion from UTF-8 encoded string to UTF-16 encoded one
+
+    Convert string embedded in SM_SRV_..._STRUCT.
+
+    `smStruct` - pointer to SM_SRV_..._STRUCT struct.
+    `nOffset` - offset of the UTF-8 string begining from smStrust.
+    `nSize` - length of the UTF-8 string.
+    `wStr` - pointer to user allocated buffer.
+    `nWStrLen` - number of wide characters in user allocated buffer
+
+    Return value - required buffer length in wide characters.
+
+    Specify `wStr=NULL` and `nWStrLen=0` to query required buffer length.
+*/
+int __stdcall SMSrvGetWideString(SM_SRV_STRUCT* smStruct, int nOffset, int nSize, wchar_t* wStr, int nWStrLen);
 
 /*
     SMSrvApiLevel - returns highest supported API level.

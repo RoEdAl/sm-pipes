@@ -11,7 +11,11 @@
 
 Dim Const $DLL_NAME = "SMServerMbdd.dll"
 Dim Const $APP_TITLE = "SMSrvMbdd Host [" & (@AutoItX64 ? "64bit]" : "32bit]")
-Dim Const $INT_TYPE = @AutoItX64 ? "int64" : "int"
+
+Dim Const $SM_SRV_CMD_URL = 1
+
+Dim Const $SM_SRV_STRUCT = "struct;int cmd;int structSize;endstruct"
+Dim Const $SM_SRV_URL_STRUCT = "struct;int cmd;int structSize;endstruct;int urlOffset;int urlSize"
 
 Dim $handler = 0
 Dim $srvHandle = 0
@@ -45,7 +49,7 @@ Func add_msg($field, $val)
 	_GUICtrlListView_EnsureVisible($MsgListView, $idx)
 EndFunc   ;==>add_msg
 
-Dim $apiLevel = DllCall($dll, $INT_TYPE, "SMSrvApiLevel")
+Dim $apiLevel = DllCall($dll, "int", "SMSrvApiLevel")
 If @error Then
 	MsgBox(0, $APP_TITLE, "Could not obtain API level.")
 EndIf
@@ -58,10 +62,52 @@ GUICtrlSetState($CheckReply, $doReply ? $GUI_CHECKED : $GUI_UNCHECKED)
 GUISetIcon($DLL_NAME)
 GUISetState(@SW_SHOW)
 
-Volatile Func my_primitive_handler($cmd, $val)
-	If $cmd = 1 Then
-		GUICtrlSendToDummy($DummyUrlMsg, $val)
+Func get_wide_string($p, $offset, $size)
+	Local $r = DllCall($dll, _
+			"int", "SMSrvGetWideString", _
+			"ptr", $p, _
+			"int", $offset, _
+			"int", $size, _
+			"ptr", 0, _
+			"int", 0)
+
+	If @error Then Return ""
+
+	If $r[0] <= 0 Then Return ""
+	Local $bufLen = $r[0] + 1
+	Local $WCharArrayDesc = StringFormat("wchar val[%d]", $bufLen)
+	Local $bufStruct = DllStructCreate($WCharArrayDesc)
+
+	$r = DllCall($dll, _
+			"int", "SMSrvGetWideString", _
+			"ptr", $p, _
+			"int", $offset, _
+			"int", $size, _
+			"ptr", DllStructGetPtr($bufStruct), _
+			"int", $bufLen )
+	If Not @error Then
+		Local $res = DllStructGetData($bufStruct, "val")
+		Return $res
 	EndIf
+
+	Return ""
+EndFunc   ;==>get_wide_string
+
+Volatile Func my_primitive_handler($p)
+	Local $srvStruct = DllStructCreate($SM_SRV_STRUCT, $p)
+	Local $cmd = DllStructGetData($srvStruct, "cmd")
+	ConsoleWriteError($cmd & @CRLF)
+
+	Switch $cmd
+		Case $SM_SRV_CMD_URL
+			Local $srvUrlStruct = DllStructCreate($SM_SRV_URL_STRUCT, $p)
+			Local $urlOffset = DllStructGetData($srvUrlStruct, "urlOffset")
+			Local $urlSize = DllStructGetData($srvUrlStruct, "urlSize")
+			Local $url = get_wide_string($p, $urlOffset, $urlSize)
+			If StringLen($url) > 0 Then
+				GUICtrlSendToDummy($DummyUrlMsg, $url)
+			EndIf
+	EndSwitch
 	Return $doReply ? 0 : -2
 EndFunc   ;==>my_primitive_handler
 
@@ -78,7 +124,7 @@ EndFunc   ;==>update_buttons_state
 Func register()
 	If $handler Then Return
 
-	$handler = DllCallbackRegister("my_primitive_handler", $INT_TYPE, $INT_TYPE & ";wstr")
+	$handler = DllCallbackRegister("my_primitive_handler", "int", "ptr")
 
 	If $handler = 0 Then
 		MsgBox(0, $APP_TITLE, "Could not create callback.", 0, $MainForm)
@@ -97,7 +143,7 @@ EndFunc   ;==>register
 Func unregister()
 	If Not $handler Then Return
 
-	Local $u = DllCall($dll, $INT_TYPE, "SMSrvUnRegister", "ptr", $srvHandle)
+	Local $u = DllCall($dll, "int", "SMSrvUnRegister", "ptr", $srvHandle)
 	If @error Then
 		MsgBox(0, $APP_TITLE, "Could not unregister callback.", 0, $MainForm)
 	Else
