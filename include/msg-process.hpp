@@ -108,19 +108,21 @@ namespace msg_process
             f = get_string_val(msg, "val", pUrl, nUrlSize);
             if(!f || nUrlSize == 0) return;
 
-            size_t nStructSize = sizeof(SM_SRV_URL_STRUCT) + nUrlSize + 1;
-            CAtlArray<BYTE> buffer;
-            buffer.SetCount(nStructSize);
-            SM_SRV_URL_STRUCT* pStruct = reinterpret_cast<SM_SRV_URL_STRUCT*>(buffer.GetData());
-            pStruct->base.cmd = SM_SRV_CMD_URL;
-            pStruct->base.structSize = static_cast<int>(nStructSize);
-            pStruct->urlOffset = sizeof(SM_SRV_URL_STRUCT);
-            pStruct->urlSize = static_cast<int>(nUrlSize);
-            char* pBuf = reinterpret_cast<char*>(pStruct);
-            pBuf += sizeof(SM_SRV_URL_STRUCT);
-            Checked::memcpy_s(pBuf, nUrlSize, pUrl, nUrlSize);
-            pBuf[nUrlSize] = '\0';
-            nRes = srv_handler(&pStruct->base);
+            {
+                size_t nStructSize = sizeof(SM_SRV_URL_STRUCT) + nUrlSize + 1;
+                CAtlArray<BYTE> buffer;
+                buffer.SetCount(nStructSize);
+                SM_SRV_URL_STRUCT* pStruct = reinterpret_cast<SM_SRV_URL_STRUCT*>(buffer.GetData());
+                pStruct->base.cmd = SM_SRV_CMD_URL;
+                pStruct->base.structSize = static_cast<int>(nStructSize);
+                pStruct->urlOffset = sizeof(SM_SRV_URL_STRUCT);
+                pStruct->urlSize = static_cast<int>(nUrlSize);
+                char* pBuf = reinterpret_cast<char*>(pStruct);
+                pBuf += sizeof(SM_SRV_URL_STRUCT);
+                Checked::memcpy_s(pBuf, nUrlSize, pUrl, nUrlSize);
+                pBuf[nUrlSize] = '\0';
+                nRes = srv_handler(&pStruct->base);
+            }
 
             send_message_to_sender(server, instanceNo, msg, nRes);
         }
