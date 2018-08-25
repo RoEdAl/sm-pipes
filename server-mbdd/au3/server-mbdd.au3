@@ -96,7 +96,6 @@ EndFunc   ;==>get_wide_string
 Volatile Func my_primitive_handler($p)
 	Local $srvStruct = DllStructCreate($SM_SRV_STRUCT, $p)
 	Local $cmd = DllStructGetData($srvStruct, "cmd")
-	ConsoleWriteError($cmd & @CRLF)
 
 	Switch $cmd
 		Case $SM_SRV_CMD_URL
