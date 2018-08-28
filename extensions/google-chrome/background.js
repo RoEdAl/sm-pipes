@@ -141,26 +141,34 @@ let
         p.onDisconnect.addListener(cs_disconnected);
     },
 
-    download_binary = (url, image_loaded) => {
+    download_binary = (url) => new Promise((resolve, reject) => {
         let req = new XMLHttpRequest(),
             on_blob_encoded = (e) => {
-                image_loaded(e.target.result);
+                resolve(e.target.result);
+            },
+            on_file_reader_error = (e) => {
+                reject(e.target.error)
             },
             on_blob_loaded = (e) => {
                 let resp = e.target.response;
                 if (resp) {
                     let file_reader = new FileReader();
-                    file_reader.addEventListener("load", on_blob_encoded);
+                    file_reader.onload = on_blob_encoded;
+                    file_reader.onerror = on_file_reader_error;
                     file_reader.readAsDataURL(resp);
                 }
+            },
+            on_timeout = (e) => {
+                reject(`Timeout - ${e.target.timeout}`);
             };
 
         req.onload = on_blob_loaded;
+        req.ontimeout = on_timeout;
+        req.timeout = 2000;
         req.open("GET", url);
         req.responseType = "blob";
-        req.mozBackgroundRequest = true;
         req.send();
-    },
+    }),
 
     on_button_clicked = (tab) => {
         send_msg("url", tab.url);
@@ -169,7 +177,7 @@ let
     on_context_menu = (info, tab) => {
         switch (info.menuItemId) {
             case "send-image-to-supermemo":
-                download_binary(info.srcUrl, (encoded_image) => {
+                download_binary(info.srcUrl).then((encoded_image) => {
                     let sval = {
                         "url": info.srcUrl,
                         "data_url": encoded_image,
