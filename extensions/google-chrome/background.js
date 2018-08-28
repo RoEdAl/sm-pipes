@@ -55,12 +55,14 @@ let
 
     csPort = [],
 
+    deep_copy = (e) => JSON.parse(JSON.stringify(e)),
+
     update_active_tab = (connected, title) => {
         if (connected) {
             chrome.browserAction.enable();
             chrome.browserAction.setIcon({ path: enabled_icon_set });
             chrome.browserAction.setTitle({ title: title ? title : send_to_sm });
-            menu_items.forEach((e) => chrome.contextMenus.create(e));
+            deep_copy(menu_items).forEach((e) => chrome.contextMenus.create(e));
         } else {
             chrome.contextMenus.removeAll(() => {
                 chrome.browserAction.disable();
