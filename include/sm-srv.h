@@ -82,6 +82,21 @@ typedef struct _SM_SRV_URL_STRUCT
 typedef int (__stdcall *SM_SRV_HANDLER)(SM_SRV_STRUCT* smStruct);
 
 /*
+	SMSrvGetWideString - conversion from UTF-8 string to UTF-16 one
+
+	Gets UTF-8 string embedded in SM_SRV_STRUCT-derived structure.
+
+	`smStruct`      - pointer to SM_SRV_STRUCT-derived structure.
+	`nOffset`       - offset of the UTF-8 string.
+	`nSize`         - length of the UTF-8 string in bytes (characters).
+	`pStr           - pointer to user allocated buffer.
+	`nStrLen        - number of wide characters in user allocated buffer.
+
+	Return value - number of bytes copied to `pStr`.
+*/
+int __stdcall SMSrvGetString(SM_SRV_STRUCT* smStruct, int nOffset, int nSize, char* pStr, int nStrLen);
+
+/*
     SMSrvGetWideString - conversion from UTF-8 string to UTF-16 one
 
     Convert UTF-8 string embedded in SM_SRV_STRUCT-derived structure to UTF-16 string.

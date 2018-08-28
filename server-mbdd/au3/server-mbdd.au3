@@ -8,6 +8,9 @@
 #include <ListViewConstants.au3>
 #include <WindowsConstants.au3>
 #include <GuiListView.au3>
+#include <StringConstants.au3>
+
+Dim Const $USE_WSTR = False
 
 Dim Const $DLL_NAME = "SMServerMbdd.dll"
 Dim Const $APP_TITLE = "SMSrvMbdd Host [" & (@AutoItX64 ? "64bit]" : "32bit]")
@@ -84,14 +87,33 @@ Func get_wide_string($p, $offset, $size)
 			"int", $offset, _
 			"int", $size, _
 			"ptr", DllStructGetPtr($bufStruct), _
-			"int", $bufLen )
+			"int", $bufLen)
 	If Not @error Then
 		Local $res = DllStructGetData($bufStruct, "val")
 		Return $res
 	EndIf
 
-	Return ""
+	Return False
 EndFunc   ;==>get_wide_string
+
+Func get_utf8_string($p, $offset, $size)
+	Local $byteArrayDesc = StringFormat("byte val[%d]", $size)
+	Local $bufStruct = DllStructCreate($byteArrayDesc)
+
+	$r = DllCall($dll, _
+			"int", "SMSrvGetString", _
+			"ptr", $p, _
+			"int", $offset, _
+			"int", $size, _
+			"ptr", DllStructGetPtr($bufStruct), _
+			"int", $size)
+	If Not @error Then
+		Local $res = DllStructGetData($bufStruct, "val")
+		Return $res
+	EndIf
+
+	Return False
+EndFunc   ;==>get_utf8_string
 
 Volatile Func my_primitive_handler($p)
 	Local $srvStruct = DllStructCreate($SM_SRV_STRUCT, $p)
@@ -102,9 +124,16 @@ Volatile Func my_primitive_handler($p)
 			Local $srvUrlStruct = DllStructCreate($SM_SRV_URL_STRUCT, $p)
 			Local $urlOffset = DllStructGetData($srvUrlStruct, "urlOffset")
 			Local $urlSize = DllStructGetData($srvUrlStruct, "urlSize")
-			Local $url = get_wide_string($p, $urlOffset, $urlSize)
-			If StringLen($url) > 0 Then
-				GUICtrlSendToDummy($DummyUrlMsg, $url)
+			If $USE_WSTR Then
+				Local $url = get_wide_string($p, $urlOffset, $urlSize)
+				If IsString($url) Then
+					GUICtrlSendToDummy($DummyUrlMsg, $url)
+				EndIf
+			Else
+				Local $url = get_utf8_string($p, $urlOffset, $urlSize)
+				If IsBinary($url) Then
+					GUICtrlSendToDummy($DummyUrlMsg, BinaryToString($url, $SB_UTF8))
+				EndIf
 			EndIf
 	EndSwitch
 	Return $doReply ? 0 : -2

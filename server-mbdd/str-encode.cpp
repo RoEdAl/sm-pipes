@@ -5,6 +5,7 @@
 #include <targetver.h>
 #include <SMPipesConfig.h>
 #include <windows.h>
+#include <atl-headers.h>
 #include <sm-srv.h>
 
 namespace
@@ -37,6 +38,48 @@ namespace
 
         return nLen16;
     }
+}
+
+extern "C" int __stdcall SMSrvGetString(SM_SRV_STRUCT* pStruct, int nOffset, int nSize, char* pStr, int nStrLen)
+{
+	if (pStruct == nullptr || nOffset < sizeof(SM_SRV_STRUCT) || nSize < 0)
+	{
+		return -1;
+	}
+
+	if (pStruct->structSize < (nOffset + nSize + 1))
+	{
+		return -1;
+	}
+
+	char* pBuf = reinterpret_cast<char*>(pStruct);
+	pBuf += nOffset;
+
+	if (pBuf[nSize] != '\0')
+	{
+		return -2;
+	}
+
+	if (pStr == nullptr)
+	{
+		return -3;
+	}
+
+	if (nStrLen <= 0)
+	{
+		return 0;
+	}
+	else if (nStrLen <= nSize)
+	{
+		Checked::memcpy_s(pStr, nStrLen, pBuf, nStrLen);
+		return nStrLen;
+	}
+	else
+	{
+		Checked::memcpy_s(pStr, nStrLen, pBuf, nSize);
+		pStr[nSize] = '\0';
+		return nSize;
+	}
 }
 
 extern "C" int __stdcall SMSrvGetWideString(SM_SRV_STRUCT* pStruct, int nOffset, int nSize, wchar_t* pWStr, int nWStrLen)

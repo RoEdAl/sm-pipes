@@ -1,6 +1,7 @@
 EXPORTS
 
 SMSrvApiLevel
+SMSrvGetString
 SMSrvGetWideString
 SMSrvRegister
 SMSrvUnRegister
