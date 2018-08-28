@@ -55,7 +55,7 @@ let
 
     csPort = [],
 
-    update_active_tab = (connected, title) => {
+    update_extension_state = (connected, title) => {
         if (connected) {
             browser.browserAction.enable();
             browser.browserAction.setIcon({ path: enabled_icon_set });
@@ -77,11 +77,11 @@ let
 
         switch (response.ntrnl) {
             case "connected":
-                update_active_tab(true);
+                update_extension_state(true);
                 break;
 
             case "disconnected":
-                update_active_tab(false);
+                update_extension_state(false);
                 break;
         }
     },
@@ -89,7 +89,7 @@ let
     disconnect_handler = () => {
         console.log("sm-pipes : disconnected");
 
-        update_active_tab(false, permanently_disconnected_from_sm)
+        update_extension_state(false, permanently_disconnected_from_sm)
     },
 
     connect_native = (name, on_message, on_disconnect) => {
