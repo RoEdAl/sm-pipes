@@ -14,7 +14,7 @@
     "applications": {
         "gecko": {
             "id": "{7417b4bb-d5d6-46f6-ac95-e1879343cd47}",
-            "strict_min_version": "50.0"
+            "strict_min_version": "54.0"
         }
     },
 
