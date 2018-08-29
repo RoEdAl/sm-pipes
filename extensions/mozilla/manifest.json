@@ -2,7 +2,7 @@
     "description": "Send to SuperMemo add-on",
     "manifest_version": 2,
     "name": "Send to SuperMemo",
-    "version": "1.0",
+    "version": "@PROJECT_VERSION_STR_NO_PLATFORM@",
     "content_security_policy": "script-src 'self'; object-src 'self'",
     "icons": {
         "16": "icons/sm-16.png",
