@@ -1,11 +1,8 @@
 //
-// Google Chrome
-//
 // background.js
 //
 
 const
-
     send_to_sm = "Send to SuperMemo",
     cannot_send_to_sm = "Connecting to SuperMemo…",
     permanently_disconnected_from_sm = "Permanently disconnected from SuperMemo",
@@ -49,27 +46,49 @@ const
 /*
     Disable button at startup.
 */
-chrome.browserAction.disable();
+
+if (CONFIG == "Debug")
+    console.log("sm-pipes: Greetings")
+
+if (BROWSER == "Mozilla")
+    browser.browserAction.disable()
+else if (BROWSER == "Chrome")
+    chrome.browserAction.disable();
 
 let
-
-    csPort = [],
-
     deep_copy = (e) => JSON.parse(JSON.stringify(e)),
 
-    update_extension_state = (connected, title) => {
-        if (connected) {
-            chrome.browserAction.enable();
-            chrome.browserAction.setIcon({ path: enabled_icon_set });
-            chrome.browserAction.setTitle({ title: title ? title : send_to_sm });
-            deep_copy(menu_items).forEach((e) => chrome.contextMenus.create(e));
-        } else {
-            chrome.contextMenus.removeAll(() => {
-                chrome.browserAction.disable();
-                chrome.browserAction.setIcon({ path: disabled_icon_set });
-                chrome.browserAction.setTitle({ "title": title ? title : cannot_send_to_sm });
-            });
-        }
+    update_extension_state = do {
+        if (BROWSER == "Mozilla")
+            (connected, title) => {
+                if (connected) {
+                    browser.browserAction.enable();
+                    browser.browserAction.setIcon({ path: enabled_icon_set });
+                    browser.browserAction.setTitle({ "title": title ? title : send_to_sm });
+                    menu_items.forEach((e) => browser.contextMenus.create(e));
+                } else {
+                    browser.contextMenus.removeAll().then(() => {
+                        browser.browserAction.disable();
+                        browser.browserAction.setIcon({ path: disabled_icon_set });
+                        browser.browserAction.setTitle({ "title": title ? title : cannot_send_to_sm });
+                    });
+                }
+            }
+        else if (BROWSER == "Chrome")
+            (connected, title) => {
+                if (connected) {
+                    chrome.browserAction.enable();
+                    chrome.browserAction.setIcon({ path: enabled_icon_set });
+                    chrome.browserAction.setTitle({ title: title ? title : send_to_sm });
+                    deep_copy(menu_items).forEach((e) => chrome.contextMenus.create(e));
+                } else {
+                    chrome.contextMenus.removeAll(() => {
+                        chrome.browserAction.disable();
+                        chrome.browserAction.setIcon({ path: disabled_icon_set });
+                        chrome.browserAction.setTitle({ "title": title ? title : cannot_send_to_sm });
+                    });
+                }
+            }
     },
 
     message_handler = (response) => {
@@ -94,11 +113,21 @@ let
         update_extension_state(false, permanently_disconnected_from_sm)
     },
 
-    connect_native = (name, on_message, on_disconnect) => {
-        let port = chrome.runtime.connectNative(name);
-        port.onMessage.addListener(on_message);
-        port.onDisconnect.addListener(on_disconnect);
-        return port;
+    connect_native = do {
+        if (BROWSER == "Mozilla")
+            (name, on_message, on_disconnect) => {
+                let port = browser.runtime.connectNative(name);
+                port.onMessage.addListener(on_message);
+                port.onDisconnect.addListener(on_disconnect);
+                return port;
+            };
+        else if (BROWSER == "Chrome")
+            (name, on_message, on_disconnect) => {
+                let port = chrome.runtime.connectNative(name);
+                port.onMessage.addListener(on_message);
+                port.onDisconnect.addListener(on_disconnect);
+                return port;
+            };
     },
 
     port = connect_native(
@@ -119,14 +148,16 @@ let
             console.log("sm-pipes > " + JSON.stringify(msg));
             port.postMessage(msg);
         } else {
-            console.log("sm-pipes ! " + JSON.stringify(msg) + " TAB:" + p.sender.tab.id);
+            console.log("sm-pipes ! " + JSON.stringify(msg) + ` TAB:${p.sender.tab.id}`);
         }
     },
+
+    csPort = [],
 
     cs_disconnected = (p) => {
         if (p.name !== "supermemo-content-script") return;
 
-        console.log("sm-pipes : content-script disconnect TAB:" + p.sender.tab.id);
+        console.log(`sm-pipes : content-script disconnect TAB:${p.sender.tab.id}`);
         p.onMessage.removeListener(on_content_script_message);
         p.onDisconnect.removeListener(cs_disconnected);
         csPort = csPort.filter((e, idx) => idx !== p.sender.tab.id);
@@ -135,7 +166,7 @@ let
     cs_connected = (p) => {
         if (p.name !== "supermemo-content-script") return;
 
-        console.log("sm-pipes : content-script connect TAB:" + p.sender.tab.id);
+        console.log(`sm-pipes : content-script connect TAB:${p.sender.tab.id}`);
         csPort[p.sender.tab.id] = p;
         p.onMessage.addListener(on_content_script_message);
         p.onDisconnect.addListener(cs_disconnected);
@@ -165,6 +196,7 @@ let
         req.onload = on_blob_loaded;
         req.ontimeout = on_timeout;
         req.timeout = 2000;
+        if (BROWSER == "Mozilla") req.mozBackgroundRequest = true;
         req.open("GET", url);
         req.responseType = "blob";
         req.send();
@@ -229,7 +261,12 @@ let
         }
     };
 
-chrome.runtime.onConnect.addListener(cs_connected);
-chrome.browserAction.onClicked.addListener(on_button_clicked);
-chrome.contextMenus.onClicked.addListener(on_context_menu);
-
+if (BROWSER == "Mozilla") {
+    browser.runtime.onConnect.addListener(cs_connected);
+    browser.browserAction.onClicked.addListener(on_button_clicked);
+    browser.contextMenus.onClicked.addListener(on_context_menu);
+} else if (BROWSER == "Chrome") {
+    chrome.runtime.onConnect.addListener(cs_connected);
+    chrome.browserAction.onClicked.addListener(on_button_clicked);
+    chrome.contextMenus.onClicked.addListener(on_context_menu);
+}

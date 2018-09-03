@@ -1,11 +1,14 @@
 //
-// Mozilla
-//
 // content-script.js
 //
 
 let
-    port = browser.runtime.connect({ name: "supermemo-content-script" }),
+    port = do {
+        if (BROWSER == "Mozilla")
+            browser.runtime.connect({ name: "supermemo-content-script" })
+        else if (BROWSER == "Chrome")
+            chrome.runtime.connect({ name: "supermemo-content-script" })
+    },
 
     on_message = (m) => {
         console.log("sm-content-script < " + JSON.stringify(m));
@@ -47,4 +50,4 @@ let
     };
 
 port.onMessage.addListener(on_message);
-port.postMessage({ greeting: true });
+port.postMessage({greeting: true});
