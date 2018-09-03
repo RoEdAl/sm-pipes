@@ -36,10 +36,16 @@ FUNCTION(CREATE_BABEL_TARGET TNAME BROWSER)
 		ADD_CUSTOM_COMMAND(
 			OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${BROWSER}/${JS_FILE}
 			COMMAND ${CMD_NPX} babel 
+				--source-type=script
+				--env-name=$<CONFIG>
+				--compact=$<IF:$<CONFIG:MinSizeRel>,true,false>
 				--no-babelrc
+				$<$<CONFIG:Release>:--no-comments>
+				$<$<CONFIG:MinSizeRel>:--no-comments>
+				$<$<CONFIG:RelWithDebInfo>:--no-comments>
 				${CMAKE_CURRENT_SOURCE_DIR}/${JS_FILE}
 				--out-file ${CMAKE_CURRENT_BINARY_DIR}/${BROWSER}/${JS_FILE}
-				--presets=${BABEL_PACKAGE}/babel-preset-$<CONFIG>.js,${BABEL_PACKAGE}/babel-preset-${BROWSER}.js
+				--presets ${BABEL_PACKAGE}/babel-preset-$<CONFIG>.js,${BABEL_PACKAGE}/babel-preset-${BROWSER}.js
 			WORKING_DIRECTORY ${BABEL_PACKAGE}
 			MAIN_DEPENDENCY ${JS_FILE}
 			DEPENDS babel-package
