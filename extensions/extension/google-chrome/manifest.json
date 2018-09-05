@@ -1,8 +1,8 @@
 {
-    "description": "Send to SuperMemo add-on",
     "manifest_version": 2,
-    "name": "Send to SuperMemo",
-    "version": "@PROJECT_VERSION_STR_NO_PLATFORM@",
+    "name": "@EXTENSION_NAME@",
+    "description": "@EXTENSION_DESC@",
+    "version": "@EXTENSION_VERSION@",
     "minimum_chrome_version": "68",
     "content_security_policy": "script-src 'self'; object-src 'self'",
     "icons": {
