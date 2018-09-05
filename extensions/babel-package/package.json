@@ -1,15 +1,16 @@
 {
-  "name": "smpipes-babel",
-  "version": "1.0.0",
-  "description": "Conditional compilation tools",
-  "devDependencies": {
-    "@babel/cli": "^7.0.0",
-    "@babel/core": "^7.0.0",
-    "@babel/plugin-proposal-do-expressions": "^7.0.0",
-    "@babel/preset-env": "^7.0.0",
-    "babel-plugin-conditional-compile": "0.0.5",
-    "babel-plugin-minify-dead-code-elimination": "^0.4.3",
-    "babel-plugin-transform-merge-sibling-variables": "^6.9.4",
-    "babel-plugin-transform-remove-console": "^6.9.4"
-  }
+    "name": "smpipes-babel",
+    "version": "1.0.0",
+    "description": "Conditional compilation tools",
+    "devDependencies": {
+        "@babel/cli": "^7.0.0",
+        "@babel/core": "^7.0.0",
+        "@babel/plugin-proposal-do-expressions": "^7.0.0",
+        "@babel/preset-env": "^7.0.0",
+        "babel-plugin-conditional-compile": "0.0.5",
+        "babel-plugin-minify-mangle-names": "^0.4.3",
+        "babel-plugin-minify-dead-code-elimination": "^0.4.3",
+        "babel-plugin-transform-merge-sibling-variables": "^6.9.4",
+        "babel-plugin-transform-remove-console": "^6.9.4"
+    }
 }
